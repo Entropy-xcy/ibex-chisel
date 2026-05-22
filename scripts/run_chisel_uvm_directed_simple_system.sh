@@ -13,6 +13,7 @@ term_after_cycles="${IBEX_UVM_DIRECTED_TERM_AFTER_CYCLES:-20000000}"
 timeout_s="${IBEX_UVM_DIRECTED_TIMEOUT_S:-300}"
 ram_size_bytes="${IBEX_UVM_DIRECTED_RAM_SIZE_BYTES:-4194304}"
 ram_depth_words=$((ram_size_bytes / 4))
+test_filter="${IBEX_UVM_DIRECTED_TEST_FILTER:-}"
 
 tests_dir="${compile_out}/run/tests"
 if [[ ! -d "${tests_dir}" ]]; then
@@ -56,6 +57,7 @@ run_one() {
   local run_dir="${repo_root}/${out_root}/logs/run/${cfg}/${test_name}"
   local stdout="${run_dir}/stdout"
   local status_log="${run_dir}/ibex_uvm_test_status.log"
+  local result_file="${run_dir}/result"
 
   if [[ ! -x "${sim_bin}" ]]; then
     echo "error: simulator is not executable: ${sim_bin}" >&2
@@ -78,6 +80,7 @@ run_one() {
 
   rm -rf "${run_dir}"
   mkdir -p "${run_dir}"
+  local sim_status=0
   (
     cd "${run_dir}"
     timeout "${timeout_s}s" "${sim_bin}" \
@@ -85,30 +88,61 @@ run_one() {
       --meminit=ram,"${vmem}",vmem \
       --term-after-cycles="${term_after_cycles}" \
       > "${stdout}" 2>&1
-  )
+  ) || sim_status=$?
 
-  rg -q "UVM directed test PASS signature observed" "${stdout}"
-  [[ -f "${status_log}" ]]
-  rg -q "0x00000001" "${status_log}"
-  if rg -q "UVM directed test FAIL|%Error|Fatal|timeout|Terminating simulation due to timeout" "${stdout}"; then
-    echo "error: failure marker in ${stdout}" >&2
+  if rg -q "UVM directed test PASS signature observed" "${stdout}" &&
+      [[ -f "${status_log}" ]] &&
+      rg -q "0x00000001" "${status_log}"; then
+    echo "PASS" > "${result_file}"
+    return 0
+  fi
+
+  if [[ "${sim_status}" == 124 ]] || rg -q "timeout|Terminating simulation due to timeout" "${stdout}"; then
+    echo "TIMEOUT" > "${result_file}"
+  elif rg -q "UVM directed test FAIL|UVM directed test failed" "${stdout}"; then
+    echo "FAIL" > "${result_file}"
+  elif rg -q "%Error|Fatal|Aborting" "${stdout}"; then
+    echo "ERROR" > "${result_file}"
+  else
+    echo "NO_PASS" > "${result_file}"
+  fi
+
+  if [[ "${IBEX_UVM_DIRECTED_KEEP_GOING:-1}" != 1 ]]; then
+    echo "error: $(cat "${result_file}") in ${stdout}" >&2
     return 1
   fi
+  return 0
 }
 
 export -f run_one
-export repo_root build_root out_root term_after_cycles timeout_s
+export repo_root build_root out_root term_after_cycles timeout_s ram_size_bytes
 
 cmds="$(mktemp)"
 trap 'rm -f "${cmds}"' EXIT
 
 while IFS= read -r -d '' test_dir; do
+  test_name="$(basename "${test_dir}")"
+  if [[ -n "${test_filter}" ]] && ! [[ "${test_name}" =~ ${test_filter} ]]; then
+    continue
+  fi
   for cfg in "${configs[@]}"; do
     printf 'run_one %q %q\n' "${cfg}" "${test_dir}" >> "${cmds}"
   done
 done < <(find "${tests_dir}" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
 
-echo "[uvm-directed] running $(wc -l < "${cmds}") directed binary simulations with ${jobs} jobs"
+total="$(wc -l < "${cmds}")"
+echo "[uvm-directed] running ${total} directed binary simulations with ${jobs} jobs"
 xargs -r -d '\n' -P "${jobs}" -I{} bash -euo pipefail -c '{}' < "${cmds}"
+
+for cfg in "${configs[@]}"; do
+  summary="${out_root}/logs/run/${cfg}/summary.txt"
+  {
+    echo "total ${total}"
+    for result in PASS FAIL TIMEOUT ERROR NO_PASS; do
+      count="$(find "${out_root}/logs/run/${cfg}" -mindepth 2 -maxdepth 2 -name result -exec grep -lx "${result}" {} + 2>/dev/null | wc -l)"
+      echo "${result} ${count}"
+    done
+  } | tee "${summary}"
+done
 
 echo "[uvm-directed] completed"
