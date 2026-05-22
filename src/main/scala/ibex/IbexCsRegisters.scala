@@ -69,7 +69,7 @@ class IbexCsRegisters(
   private def pmpCfgByte(cfg: UInt): UInt = Cat(cfg(5), 0.U(2.W), cfg(4, 3), cfg(2), cfg(1), cfg(0))
   private def pmpCfgLocked(cfg: UInt, mseccfg: UInt): Bool = cfg(5) && !mseccfg(2)
   private def isMmlMExecCfg(cfg: UInt): Bool = {
-    val rwx = cfg(2, 0)
+    val rwx = Cat(cfg(0), cfg(1), cfg(2))
     cfg(5) && (rwx === "b001".U || rwx === "b010".U || rwx === "b011".U || rwx === "b101".U)
   }
   private def pmpCfgResetValue(cfg: BigInt): UInt = {
