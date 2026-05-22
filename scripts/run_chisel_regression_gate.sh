@@ -23,7 +23,7 @@ if [[ -x "${llvm_riscv_toolchain}/bin/riscv32-unknown-elf-gcc" ]]; then
 fi
 
 configs=(${IBEX_REGRESSION_CONFIGS:-small opentitan maxperf maxperf-pmp-bmbalanced})
-software_tests=(${IBEX_REGRESSION_SW_TESTS:-hello_test dummy_instr_test dit_test pmp_smoke_test})
+software_tests=(${IBEX_REGRESSION_SW_TESTS:-})
 fusesoc_targets=(ibex_simple_system ibex_riscv_compliance tb_cs_registers)
 
 mkdir -p "${out_root}/logs/build" "${out_root}/logs/simple_system" "${out_root}/logs/cs_registers"
@@ -75,15 +75,40 @@ if [[ "${failed_builds}" != 0 ]]; then
 fi
 
 sw_cmds="$(mktemp)"
+add_sw_cmd() {
+  local cfg="$1"
+  local test="$2"
+  local expect_pass_log="${3:-0}"
+  local sim_bin="${build_root}/${cfg}/ibex_simple_system/local_ibex_chisel_ibex_simple_system_0.1/sim-verilator/Vibex_simple_system"
+  local vmem="externals/ibex/examples/sw/simple_system/${test}/${test}.vmem"
+  local run_dir="${out_root}/logs/simple_system/${cfg}/${test}"
+  printf 'rm -rf %q && mkdir -p %q && (cd %q && %q --meminit=ram,%q,vmem --term-after-cycles=%q >stdout 2>&1) && rg -q %q %q' \
+    "${run_dir}" "${run_dir}" "${run_dir}" "${repo_root}/${sim_bin}" "${repo_root}/${vmem}" "${term_after_cycles}" \
+    "Terminating simulation by software request" "${run_dir}/stdout" >> "${sw_cmds}"
+  if [[ "${expect_pass_log}" == 1 ]]; then
+    printf ' && rg -q %q %q' "PASS: All test sequences behaved as expected" "${run_dir}/ibex_simple_system.log" >> "${sw_cmds}"
+  fi
+  printf ' && ! rg -q %q %q\n' "FAILURE" "${run_dir}/ibex_simple_system.log" >> "${sw_cmds}"
+}
+
 for cfg in "${configs[@]}"; do
-  sim_bin="${build_root}/${cfg}/ibex_simple_system/local_ibex_chisel_ibex_simple_system_0.1/sim-verilator/Vibex_simple_system"
-  for test in "${software_tests[@]}"; do
-    vmem="externals/ibex/examples/sw/simple_system/${test}/${test}.vmem"
-    log="${out_root}/logs/simple_system/${cfg}_${test}.stdout"
-    printf '%q --meminit=ram,%q,vmem --term-after-cycles=%q >%q 2>&1 && rg -q %q %q\n' \
-      "${sim_bin}" "${vmem}" "${term_after_cycles}" "${log}" \
-      "Terminating simulation by software request" "${log}" >> "${sw_cmds}"
-  done
+  if ((${#software_tests[@]})); then
+    for test in "${software_tests[@]}"; do
+      add_sw_cmd "${cfg}" "${test}"
+    done
+  else
+    add_sw_cmd "${cfg}" hello_test
+    case "${cfg}" in
+      opentitan)
+        add_sw_cmd "${cfg}" dummy_instr_test 1
+        add_sw_cmd "${cfg}" dit_test 1
+        add_sw_cmd "${cfg}" pmp_smoke_test
+        ;;
+      maxperf-pmp-bmbalanced)
+        add_sw_cmd "${cfg}" pmp_smoke_test
+        ;;
+    esac
+  fi
 done
 
 run_parallel "running simple-system software tests" "${sw_cmds}"
