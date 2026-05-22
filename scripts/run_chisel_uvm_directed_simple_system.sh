@@ -75,9 +75,9 @@ run_one() {
       --out "${vmem}" \
       --ram-size-bytes "${ram_size_bytes}"
   fi
-  local entry boot_addr
-  entry="$(sed -n 's,^// entry=0x,,p' "${vmem}" | head -1)"
-  boot_addr="$(printf '0x%08x' "$(( (16#${entry}) & 0xffffff00 ))")"
+  local boot boot_addr
+  boot="$(sed -n 's,^// boot=0x,,p' "${vmem}" | head -1)"
+  boot_addr="$(printf '0x%08x' "$(( (16#${boot}) & 0xffffff00 ))")"
 
   rm -rf "${run_dir}"
   mkdir -p "${run_dir}"

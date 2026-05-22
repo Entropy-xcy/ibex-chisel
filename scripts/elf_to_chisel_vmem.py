@@ -33,6 +33,7 @@ def main() -> int:
     e_shnum = struct.unpack_from("<H", data, 0x30)[0]
 
     words: dict[int, int] = {}
+    lowest_load_addr: int | None = None
     for idx in range(e_shnum):
         off = e_shoff + idx * e_shentsize
         sh_type = struct.unpack_from("<I", data, off + 0x04)[0]
@@ -44,6 +45,9 @@ def main() -> int:
         if sh_type != SHT_PROGBITS or not (sh_flags & SHF_ALLOC):
             continue
 
+        if lowest_load_addr is None or sh_addr < lowest_load_addr:
+            lowest_load_addr = sh_addr
+
         section = data[sh_offset:sh_offset + sh_size]
         for byte_idx, byte in enumerate(section):
             mem_addr = (sh_addr + byte_idx) % args.ram_size_bytes
@@ -54,6 +58,8 @@ def main() -> int:
 
     with open(args.out, "w", encoding="ascii") as f:
         f.write(f"// entry=0x{e_entry:08x}\n")
+        if lowest_load_addr is not None:
+            f.write(f"// boot=0x{(lowest_load_addr + 0x80) & 0xFFFFFFFF:08x}\n")
         last_idx = None
         for word_idx in sorted(words):
             if last_idx is None or word_idx != last_idx + 1:
