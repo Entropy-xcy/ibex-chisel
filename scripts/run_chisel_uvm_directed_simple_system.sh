@@ -104,10 +104,10 @@ run_one() {
     return 0
   fi
 
-  if [[ "${sim_status}" == 124 ]] || rg -q "timeout|Terminating simulation due to timeout" "${stdout}"; then
-    echo "TIMEOUT" > "${result_file}"
-  elif rg -q "UVM directed test FAIL|UVM directed test failed" "${stdout}"; then
+  if rg -q "UVM directed test FAIL|UVM directed test failed" "${stdout}"; then
     echo "FAIL" > "${result_file}"
+  elif [[ "${sim_status}" == 124 ]] || rg -q "timeout|Terminating simulation due to timeout" "${stdout}"; then
+    echo "TIMEOUT" > "${result_file}"
   elif rg -q "%Error|Fatal|Aborting" "${stdout}"; then
     echo "ERROR" > "${result_file}"
   else
