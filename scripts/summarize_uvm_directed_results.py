@@ -16,6 +16,8 @@ def classify(test_name: str) -> str:
         return "epmp_generated"
     if test_name.startswith("pmp_mseccfg_test"):
         return "handwritten_mseccfg"
+    if test_name.startswith("zicntr."):
+        return "zicntr_counter_alias"
     return "other_original_directed"
 
 
