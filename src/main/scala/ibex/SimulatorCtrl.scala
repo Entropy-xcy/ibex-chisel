@@ -130,6 +130,8 @@ class UvmTestStatusCtrl(
     """// Lightweight Verilator endpoint for original Ibex directed tests.
       |// The riscv-tests/riscv-arch-tests pass/fail macros write 0x700 followed
       |// by 0x1 on pass, or 0x101 on fail, to the UVM signature address.
+      |// The original mseccfg/PMP directed tests write a 0-valued core-status
+      |// word before the same 0x1 pass result.
       |module UvmTestStatusCtrl #(
       |  parameter string LogName = "ibex_uvm_test_status.log",
       |  parameter int unsigned StatusAddrLowNibble = 8
@@ -169,6 +171,8 @@ class UvmTestStatusCtrl(
       |        $fflush(log_fd);
       |
       |        unique case (wdata_i)
+      |          32'h0000_0000: begin
+      |          end
       |          32'h0000_0700: begin
       |          end
       |          32'h0000_0001: begin
