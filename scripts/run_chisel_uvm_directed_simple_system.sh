@@ -186,6 +186,9 @@ for cfg in "${configs[@]}"; do
       echo "${result} ${count}"
     done
   } | tee "${summary}"
+  "${repo_root}/scripts/summarize_uvm_directed_results.py" \
+    "${out_root}/logs/run/${cfg}" \
+    | tee "${out_root}/logs/run/${cfg}/summary_by_group.txt"
 done
 
 echo "[uvm-directed] completed"
