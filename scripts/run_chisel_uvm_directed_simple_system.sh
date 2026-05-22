@@ -144,7 +144,7 @@ for cfg in "${configs[@]}"; do
   {
     echo "total ${total}"
     for result in PASS FAIL TIMEOUT ERROR NO_PASS; do
-      count="$(find "${out_root}/logs/run/${cfg}" -mindepth 2 -maxdepth 2 -name result -exec grep -lx "${result}" {} + 2>/dev/null | wc -l)"
+      count="$(find "${out_root}/logs/run/${cfg}" -mindepth 2 -maxdepth 2 -name result -exec grep -lx "${result}" {} + 2>/dev/null | wc -l || true)"
       echo "${result} ${count}"
     done
   } | tee "${summary}"
