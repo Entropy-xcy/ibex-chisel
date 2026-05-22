@@ -16,6 +16,7 @@ ram_depth_words=$((ram_size_bytes / 4))
 test_filter="${IBEX_UVM_DIRECTED_TEST_FILTER:-}"
 test_exclude="${IBEX_UVM_DIRECTED_TEST_EXCLUDE:-}"
 pmp_load_mode="${IBEX_UVM_DIRECTED_PMP_LOAD_MODE:-original-bin}"
+pmp_bin_base_addr="${IBEX_UVM_DIRECTED_PMP_BIN_BASE_ADDR:-0x80000000}"
 
 tests_dir="${compile_out}/run/tests"
 if [[ ! -d "${tests_dir}" ]]; then
@@ -77,7 +78,7 @@ run_one() {
         original-bin)
           "${repo_root}/scripts/elf_to_chisel_vmem.py" \
             --bin "${bin}" \
-            --bin-base-addr 0x80000000 \
+            --bin-base-addr "${pmp_bin_base_addr}" \
             --out "${vmem}" \
             --ram-size-bytes "${ram_size_bytes}"
           ;;
@@ -153,7 +154,7 @@ run_one() {
 }
 
 export -f run_one
-export repo_root build_root out_root term_after_cycles timeout_s ram_size_bytes pmp_load_mode
+export repo_root build_root out_root term_after_cycles timeout_s ram_size_bytes pmp_load_mode pmp_bin_base_addr
 
 cmds="$(mktemp)"
 trap 'rm -f "${cmds}"' EXIT
