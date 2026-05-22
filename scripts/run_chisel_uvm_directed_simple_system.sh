@@ -72,7 +72,13 @@ run_one() {
 
   if [[ "${test_name}" == test_pmp_* ]]; then
     if [[ ! -f "${vmem}" || "${elf}" -nt "${vmem}" ]]; then
-      if [[ "${test_name}" == test_pmp_ok_1_* ]]; then
+      if [[ "${test_name}" == test_pmp_ok_1_*_mml1* ]]; then
+        "${repo_root}/scripts/elf_to_chisel_vmem.py" \
+          --elf "${elf}" \
+          --out "${vmem}" \
+          --ram-size-bytes "${ram_size_bytes}" \
+          --mseccfg-layout
+      elif [[ "${test_name}" == test_pmp_ok_1_* ]]; then
         "${repo_root}/scripts/elf_to_chisel_vmem.py" \
           --elf "${elf}" \
           --out "${vmem}" \
