@@ -29,22 +29,25 @@ class IbexSimpleSystem(
     branchPredictor: Boolean = false,
     instrCycleDelay: Int = 0,
     sramInitFile: String = "",
-    ramDepth: Int = (1024 * 1024) / 4)
+    ramDepth: Int = (1024 * 1024) / 4,
+    ramBaseAddrValue: BigInt = BigInt("00100000", 16),
+    uvmTestStatusCtrl: Boolean = false)
     extends RawModule {
   override def desiredName: String = "ibex_simple_system"
 
-  val IO_CLK = IO(Input(Clock()))
-  val IO_RST_N = IO(Input(Bool()))
-
-  private val nrDevices = 3
+  private val nrDevices = if (uvmTestStatusCtrl) 4 else 3
   private val nrHosts = 1
-  private val coreD = 0
-  private val ramBaseAddr = "h00100000".U(32.W)
+  private val ramBaseAddr = ramBaseAddrValue.U(32.W)
   private val ramMask = "hfff00000".U(32.W)
   private val simCtrlBaseAddr = "h00020000".U(32.W)
   private val simCtrlMask = "hfffffc00".U(32.W)
   private val timerBaseAddr = "h00030000".U(32.W)
   private val timerMask = "hfffffc00".U(32.W)
+  private val uvmTestStatusBaseAddr = "h8ffffff0".U(32.W)
+  private val uvmTestStatusMask = "hfffffff0".U(32.W)
+
+  val IO_CLK = IO(Input(Clock()))
+  val IO_RST_N = IO(Input(Bool()))
 
   val hostRdata = Wire(UInt(32.W))
   val hostErr = Wire(Bool())
@@ -68,6 +71,8 @@ class IbexSimpleSystem(
   val u_ram = Module(new Ram2P(depth = ramDepth, bExtraDelay = instrCycleDelay, memInitFile = sramInitFile))
   val u_simulator_ctrl = Module(new SimulatorCtrl(logName = "ibex_simple_system.log"))
   val u_timer = Module(new Timer())
+  val u_uvm_test_status_ctrl =
+    if (uvmTestStatusCtrl) Some(Module(new UvmTestStatusCtrl(logName = "ibex_uvm_test_status.log"))) else None
 
   val u_top = Module(new IbexTopTracing(
     secureIbex = secureIbex,
@@ -91,10 +96,10 @@ class IbexSimpleSystem(
     dbgTriggerEn = dbgTriggerEn,
     iCacheTweakInfection = iCacheTweakInfection,
     memECC = secureIbex,
-    dmBaseAddr = BigInt("00100000", 16),
+    dmBaseAddr = ramBaseAddrValue,
     dmAddrMask = BigInt("00000003", 16),
-    dmHaltAddr = BigInt("00100000", 16),
-    dmExceptionAddr = BigInt("00100000", 16)))
+    dmHaltAddr = ramBaseAddrValue,
+    dmExceptionAddr = ramBaseAddrValue))
 
   u_top.clk_i := IO_CLK
   u_top.rst_ni := IO_RST_N
@@ -162,6 +167,10 @@ class IbexSimpleSystem(
   u_bus.cfg_device_addr_mask(1) := simCtrlMask
   u_bus.cfg_device_addr_base(2) := timerBaseAddr
   u_bus.cfg_device_addr_mask(2) := timerMask
+  if (uvmTestStatusCtrl) {
+    u_bus.cfg_device_addr_base(3) := uvmTestStatusBaseAddr
+    u_bus.cfg_device_addr_mask(3) := uvmTestStatusMask
+  }
 
   u_ram.clk_i := IO_CLK
   u_ram.rst_ni := IO_RST_N
@@ -204,6 +213,19 @@ class IbexSimpleSystem(
   deviceRdata(2) := u_timer.timer_rdata_o
   deviceErr(2) := u_timer.timer_err_o
   timerIrq := u_timer.timer_intr_o
+
+  u_uvm_test_status_ctrl.foreach { ctrl =>
+    ctrl.clk_i := IO_CLK
+    ctrl.rst_ni := IO_RST_N
+    ctrl.req_i := deviceReq(3)
+    ctrl.we_i := deviceWe(3)
+    ctrl.be_i := deviceBe(3)
+    ctrl.addr_i := deviceAddr(3)
+    ctrl.wdata_i := deviceWdata(3)
+    deviceRvalid(3) := ctrl.rvalid_o
+    deviceRdata(3) := ctrl.rdata_o
+    deviceErr(3) := false.B
+  }
 
   if (secureIbex) {
     val dataRdataIntgGen = Module(new PrimSecdedInv3932Enc)

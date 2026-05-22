@@ -334,8 +334,10 @@ object EmitIbex extends App {
       top: String = "top-tracing",
       targetDir: String = "generated/ibex",
       ramDepth: Int = (1024 * 1024) / 4,
+      ramBaseAddr: BigInt = BigInt("00100000", 16),
       instrCycleDelay: Int = 0,
       sramInitFile: String = "",
+      uvmTestStatusCtrl: Boolean = false,
       wrapper: Boolean = true,
       simpleSystemCore: Boolean = true,
       csrTestCore: Boolean = true,
@@ -349,10 +351,14 @@ object EmitIbex extends App {
        |  --top <name>          top, top-tracing, core, simple-system, or riscv-compliance. Default: top-tracing
        |  --target-dir <path>   Output directory. Default: generated/ibex
        |  --ram-depth <words>   Ram2P word depth for --top simple-system. Default: 262144
+       |  --ram-base-addr <addr>
+       |                        RAM and boot base address for --top simple-system. Default: 0x00100000
        |  --instr-cycle-delay <cycles>
        |                        Ram2P B-side extra delay for --top simple-system. Default: 0
        |  --sram-init-file <path>
        |                        VMEM file used to initialize --top simple-system SRAM. Default: empty
+       |  --uvm-test-status-ctrl
+       |                        Add a pass/fail signature endpoint for original Ibex UVM directed binaries.
        |  --no-wrapper          Do not emit the ibex_top_tracing compatibility wrapper.
        |  --no-simple-system    Do not emit the local simple_system FuseSoC core.
        |  --no-csr-test         Do not emit the local CSR register FuseSoC test core.
@@ -369,8 +375,10 @@ object EmitIbex extends App {
     case "--top" :: value :: tail => parse(tail, options.copy(top = value))
     case "--target-dir" :: value :: tail => parse(tail, options.copy(targetDir = value))
     case "--ram-depth" :: value :: tail => parse(tail, options.copy(ramDepth = value.toInt))
+    case "--ram-base-addr" :: value :: tail => parse(tail, options.copy(ramBaseAddr = parseBigInt(value)))
     case "--instr-cycle-delay" :: value :: tail => parse(tail, options.copy(instrCycleDelay = value.toInt))
     case "--sram-init-file" :: value :: tail => parse(tail, options.copy(sramInitFile = value))
+    case "--uvm-test-status-ctrl" :: tail => parse(tail, options.copy(uvmTestStatusCtrl = true))
     case "--no-wrapper" :: tail => parse(tail, options.copy(wrapper = false))
     case "--no-simple-system" :: tail => parse(tail, options.copy(simpleSystemCore = false))
     case "--no-csr-test" :: tail => parse(tail, options.copy(csrTestCore = false))
@@ -384,6 +392,11 @@ object EmitIbex extends App {
   Files.createDirectories(targetDir)
 
   private def svBool(value: Boolean): String = if (value) "1'b1" else "1'b0"
+
+  private def parseBigInt(value: String): BigInt = {
+    val clean = value.stripPrefix("0x").stripPrefix("0X").replace("_", "")
+    BigInt(clean, if (value.startsWith("0x") || value.startsWith("0X")) 16 else 10)
+  }
 
   private def svRv32M(value: Int): String = value match {
     case v if v == IbexPkg.RV32M.None_.asUInt.litValue.toInt => "ibex_pkg::RV32MNone"
@@ -491,7 +504,9 @@ object EmitIbex extends App {
     branchPredictor = config.branchPredictor,
     instrCycleDelay = options.instrCycleDelay,
     sramInitFile = options.sramInitFile,
-    ramDepth = options.ramDepth)
+    ramDepth = options.ramDepth,
+    ramBaseAddrValue = options.ramBaseAddr,
+    uvmTestStatusCtrl = options.uvmTestStatusCtrl)
 
   private def riscvCompliance() = new IbexRiscvCompliance(
     pmpEnable = config.pmpEnable,

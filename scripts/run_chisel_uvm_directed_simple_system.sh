@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${repo_root}"
+
+jobs="${IBEX_UVM_DIRECTED_JOBS:-64}"
+configs=(${IBEX_UVM_DIRECTED_CONFIGS:-opentitan})
+compile_out="${IBEX_UVM_DIRECTED_COMPILE_OUT:-generated/uvm-compile-directed-all}"
+out_root="${IBEX_UVM_DIRECTED_OUT:-generated/uvm-directed-simple}"
+build_root="${IBEX_UVM_DIRECTED_BUILD_ROOT:-build/uvm-directed-simple}"
+term_after_cycles="${IBEX_UVM_DIRECTED_TERM_AFTER_CYCLES:-20000000}"
+timeout_s="${IBEX_UVM_DIRECTED_TIMEOUT_S:-300}"
+
+tests_dir="${compile_out}/run/tests"
+if [[ ! -d "${tests_dir}" ]]; then
+  echo "error: missing compiled UVM directed tests: ${tests_dir}" >&2
+  echo "Run the core_ibex compile_directed_tests goal first." >&2
+  exit 1
+fi
+
+mkdir -p "${out_root}/logs/build" "${out_root}/logs/run" "${out_root}/vmem"
+
+for cfg in "${configs[@]}"; do
+  echo "[uvm-directed] generating ${cfg} Chisel simple-system with UVM status endpoint"
+  ./mill -i ibex_chisel.runMain ibex.EmitIbex \
+    --config "${cfg}" \
+    --top top-tracing \
+    --target-dir "${out_root}/${cfg}" \
+    --ram-base-addr 0x80000000 \
+    --uvm-test-status-ctrl
+
+  echo "[uvm-directed] building ${cfg} Verilator simple-system"
+  fusesoc --cores-root externals/ibex --cores-root "${out_root}/${cfg}" \
+    run --target=sim \
+    --build-root "${build_root}/${cfg}/ibex_simple_system" \
+    --build \
+    "local:ibex_chisel:ibex_simple_system:0.1" \
+    > "${out_root}/logs/build/${cfg}_ibex_simple_system.log" 2>&1
+done
+
+run_one() {
+  local cfg="$1"
+  local test_dir="$2"
+  local test_name
+  test_name="$(basename "${test_dir}")"
+
+  local sim_bin="${repo_root}/${build_root}/${cfg}/ibex_simple_system/local_ibex_chisel_ibex_simple_system_0.1/sim-verilator/Vibex_simple_system"
+  local bin="${test_dir}/test.bin"
+  local vmem="${repo_root}/${out_root}/vmem/${test_name}.vmem"
+  local run_dir="${repo_root}/${out_root}/logs/run/${cfg}/${test_name}"
+  local stdout="${run_dir}/stdout"
+  local status_log="${run_dir}/ibex_uvm_test_status.log"
+
+  if [[ ! -x "${sim_bin}" ]]; then
+    echo "error: simulator is not executable: ${sim_bin}" >&2
+    return 1
+  fi
+  if [[ ! -f "${bin}" ]]; then
+    echo "error: missing test binary: ${bin}" >&2
+    return 1
+  fi
+
+  if [[ ! -f "${vmem}" || "${bin}" -nt "${vmem}" ]]; then
+    {
+      echo "@00000000"
+      xxd -e -g4 -c4 "${bin}" | awk '{print $2}'
+    } > "${vmem}"
+  fi
+
+  rm -rf "${run_dir}"
+  mkdir -p "${run_dir}"
+  (
+    cd "${run_dir}"
+    timeout "${timeout_s}s" "${sim_bin}" \
+      --meminit=ram,"${vmem}",vmem \
+      --term-after-cycles="${term_after_cycles}" \
+      > "${stdout}" 2>&1
+  )
+
+  rg -q "UVM directed test PASS signature observed" "${stdout}"
+  [[ -f "${status_log}" ]]
+  rg -q "0x00000001" "${status_log}"
+  if rg -q "UVM directed test FAIL|%Error|Fatal|timeout|Terminating simulation due to timeout" "${stdout}"; then
+    echo "error: failure marker in ${stdout}" >&2
+    return 1
+  fi
+}
+
+export -f run_one
+export repo_root build_root out_root term_after_cycles timeout_s
+
+cmds="$(mktemp)"
+trap 'rm -f "${cmds}"' EXIT
+
+while IFS= read -r -d '' test_dir; do
+  for cfg in "${configs[@]}"; do
+    printf 'run_one %q %q\n' "${cfg}" "${test_dir}" >> "${cmds}"
+  done
+done < <(find "${tests_dir}" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
+
+echo "[uvm-directed] running $(wc -l < "${cmds}") directed binary simulations with ${jobs} jobs"
+xargs -r -d '\n' -P "${jobs}" -I{} bash -euo pipefail -c '{}' < "${cmds}"
+
+echo "[uvm-directed] completed"
