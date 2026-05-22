@@ -311,6 +311,14 @@ xcuserdata
 *.log
 /.bsp
 
+# Local regression/build artifacts
+/generated/
+/tools/src/
+/tools/spike-ibex-cosim/
+/ibex_simple_system_pcount.csv
+/sim.fst
+/externals/ibex/sim.fst
+
 # sbt specific
 .cache
 .history
@@ -338,4 +346,3 @@ project/plugins/project/
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
-

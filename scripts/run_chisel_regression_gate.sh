@@ -8,6 +8,12 @@ jobs="${IBEX_REGRESSION_JOBS:-16}"
 term_after_cycles="${IBEX_REGRESSION_TERM_AFTER_CYCLES:-5000000}"
 out_root="${IBEX_REGRESSION_OUT:-generated/regression}"
 build_root="${IBEX_REGRESSION_BUILD_ROOT:-build/chisel-regression}"
+local_spike_pkgconfig="${repo_root}/tools/spike-ibex-cosim/lib/pkgconfig"
+
+if [[ -d "${local_spike_pkgconfig}" ]]; then
+  export PKG_CONFIG_PATH="${local_spike_pkgconfig}:${PKG_CONFIG_PATH:-}"
+  export LD_LIBRARY_PATH="${repo_root}/tools/spike-ibex-cosim/lib:${LD_LIBRARY_PATH:-}"
+fi
 
 configs=(${IBEX_REGRESSION_CONFIGS:-small opentitan maxperf maxperf-pmp-bmbalanced})
 software_tests=(${IBEX_REGRESSION_SW_TESTS:-hello_test dummy_instr_test dit_test pmp_smoke_test})
@@ -20,7 +26,7 @@ run_parallel() {
   local commands_file="$2"
 
   echo "[gate] ${description}"
-  if ! xargs -r -d '\n' -P "${jobs}" -I{} bash -lc '{}' < "${commands_file}"; then
+  if ! xargs -r -d '\n' -P "${jobs}" -I{} bash -c '{}' < "${commands_file}"; then
     echo "[gate] ${description} failed" >&2
     return 1
   fi
