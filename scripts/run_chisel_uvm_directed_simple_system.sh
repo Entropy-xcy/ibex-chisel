@@ -11,6 +11,8 @@ out_root="${IBEX_UVM_DIRECTED_OUT:-generated/uvm-directed-simple}"
 build_root="${IBEX_UVM_DIRECTED_BUILD_ROOT:-build/uvm-directed-simple}"
 term_after_cycles="${IBEX_UVM_DIRECTED_TERM_AFTER_CYCLES:-20000000}"
 timeout_s="${IBEX_UVM_DIRECTED_TIMEOUT_S:-300}"
+ram_size_bytes="${IBEX_UVM_DIRECTED_RAM_SIZE_BYTES:-4194304}"
+ram_depth_words=$((ram_size_bytes / 4))
 
 tests_dir="${compile_out}/run/tests"
 if [[ ! -d "${tests_dir}" ]]; then
@@ -27,7 +29,9 @@ for cfg in "${configs[@]}"; do
     --config "${cfg}" \
     --top top-tracing \
     --target-dir "${out_root}/${cfg}" \
-    --ram-base-addr 0x80000000 \
+    --ram-depth "${ram_depth_words}" \
+    --ram-base-addr 0x00100000 \
+    --ram-addr-mask 0x00000000 \
     --uvm-test-status-ctrl
 
   echo "[uvm-directed] building ${cfg} Verilator simple-system"
@@ -47,6 +51,7 @@ run_one() {
 
   local sim_bin="${repo_root}/${build_root}/${cfg}/ibex_simple_system/local_ibex_chisel_ibex_simple_system_0.1/sim-verilator/Vibex_simple_system"
   local bin="${test_dir}/test.bin"
+  local elf="${test_dir}/test.o"
   local vmem="${repo_root}/${out_root}/vmem/${test_name}.vmem"
   local run_dir="${repo_root}/${out_root}/logs/run/${cfg}/${test_name}"
   local stdout="${run_dir}/stdout"
@@ -56,23 +61,27 @@ run_one() {
     echo "error: simulator is not executable: ${sim_bin}" >&2
     return 1
   fi
-  if [[ ! -f "${bin}" ]]; then
-    echo "error: missing test binary: ${bin}" >&2
+  if [[ ! -f "${elf}" ]]; then
+    echo "error: missing test ELF: ${elf}" >&2
     return 1
   fi
 
-  if [[ ! -f "${vmem}" || "${bin}" -nt "${vmem}" ]]; then
-    {
-      echo "@00000000"
-      xxd -e -g4 -c4 "${bin}" | awk '{print $2}'
-    } > "${vmem}"
+  if [[ ! -f "${vmem}" || "${elf}" -nt "${vmem}" ]]; then
+    "${repo_root}/scripts/elf_to_chisel_vmem.py" \
+      --elf "${elf}" \
+      --out "${vmem}" \
+      --ram-size-bytes "${ram_size_bytes}"
   fi
+  local entry boot_addr
+  entry="$(sed -n 's,^// entry=0x,,p' "${vmem}" | head -1)"
+  boot_addr="$(printf '0x%08x' "$(( (16#${entry}) & 0xffffff00 ))")"
 
   rm -rf "${run_dir}"
   mkdir -p "${run_dir}"
   (
     cd "${run_dir}"
     timeout "${timeout_s}s" "${sim_bin}" \
+      "+boot_addr=${boot_addr}" \
       --meminit=ram,"${vmem}",vmem \
       --term-after-cycles="${term_after_cycles}" \
       > "${stdout}" 2>&1

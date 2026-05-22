@@ -335,6 +335,7 @@ object EmitIbex extends App {
       targetDir: String = "generated/ibex",
       ramDepth: Int = (1024 * 1024) / 4,
       ramBaseAddr: BigInt = BigInt("00100000", 16),
+      ramAddrMask: BigInt = BigInt("fff00000", 16),
       instrCycleDelay: Int = 0,
       sramInitFile: String = "",
       uvmTestStatusCtrl: Boolean = false,
@@ -353,6 +354,8 @@ object EmitIbex extends App {
        |  --ram-depth <words>   Ram2P word depth for --top simple-system. Default: 262144
        |  --ram-base-addr <addr>
        |                        RAM and boot base address for --top simple-system. Default: 0x00100000
+       |  --ram-addr-mask <mask>
+       |                        RAM address decode mask for --top simple-system. Default: 0xfff00000
        |  --instr-cycle-delay <cycles>
        |                        Ram2P B-side extra delay for --top simple-system. Default: 0
        |  --sram-init-file <path>
@@ -376,6 +379,7 @@ object EmitIbex extends App {
     case "--target-dir" :: value :: tail => parse(tail, options.copy(targetDir = value))
     case "--ram-depth" :: value :: tail => parse(tail, options.copy(ramDepth = value.toInt))
     case "--ram-base-addr" :: value :: tail => parse(tail, options.copy(ramBaseAddr = parseBigInt(value)))
+    case "--ram-addr-mask" :: value :: tail => parse(tail, options.copy(ramAddrMask = parseBigInt(value)))
     case "--instr-cycle-delay" :: value :: tail => parse(tail, options.copy(instrCycleDelay = value.toInt))
     case "--sram-init-file" :: value :: tail => parse(tail, options.copy(sramInitFile = value))
     case "--uvm-test-status-ctrl" :: tail => parse(tail, options.copy(uvmTestStatusCtrl = true))
@@ -506,6 +510,7 @@ object EmitIbex extends App {
     sramInitFile = options.sramInitFile,
     ramDepth = options.ramDepth,
     ramBaseAddrValue = options.ramBaseAddr,
+    ramAddrMaskValue = options.ramAddrMask,
     uvmTestStatusCtrl = options.uvmTestStatusCtrl)
 
   private def riscvCompliance() = new IbexRiscvCompliance(

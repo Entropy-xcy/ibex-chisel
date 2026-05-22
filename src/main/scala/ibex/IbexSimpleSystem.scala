@@ -31,6 +31,7 @@ class IbexSimpleSystem(
     sramInitFile: String = "",
     ramDepth: Int = (1024 * 1024) / 4,
     ramBaseAddrValue: BigInt = BigInt("00100000", 16),
+    ramAddrMaskValue: BigInt = BigInt("fff00000", 16),
     uvmTestStatusCtrl: Boolean = false)
     extends RawModule {
   override def desiredName: String = "ibex_simple_system"
@@ -38,7 +39,7 @@ class IbexSimpleSystem(
   private val nrDevices = if (uvmTestStatusCtrl) 4 else 3
   private val nrHosts = 1
   private val ramBaseAddr = ramBaseAddrValue.U(32.W)
-  private val ramMask = "hfff00000".U(32.W)
+  private val ramMask = ramAddrMaskValue.U(32.W)
   private val simCtrlBaseAddr = "h00020000".U(32.W)
   private val simCtrlMask = "hfffffc00".U(32.W)
   private val timerBaseAddr = "h00030000".U(32.W)
@@ -71,6 +72,7 @@ class IbexSimpleSystem(
   val u_ram = Module(new Ram2P(depth = ramDepth, bExtraDelay = instrCycleDelay, memInitFile = sramInitFile))
   val u_simulator_ctrl = Module(new SimulatorCtrl(logName = "ibex_simple_system.log"))
   val u_timer = Module(new Timer())
+  val u_boot_addr = Module(new PlusArgUInt32(name = "boot_addr", default = ramBaseAddrValue))
   val u_uvm_test_status_ctrl =
     if (uvmTestStatusCtrl) Some(Module(new UvmTestStatusCtrl(logName = "ibex_uvm_test_status.log"))) else None
 
@@ -108,7 +110,7 @@ class IbexSimpleSystem(
   u_top.ram_cfg_icache_tag_i := 0.U.asTypeOf(new PrimRam1PPkg.Ram1PCfg)
   u_top.ram_cfg_icache_data_i := 0.U.asTypeOf(new PrimRam1PPkg.Ram1PCfg)
   u_top.hart_id_i := 0.U
-  u_top.boot_addr_i := ramBaseAddr
+  u_top.boot_addr_i := u_boot_addr.out_o
   u_top.instr_gnt_i := u_top.instr_req_o
   u_top.instr_rvalid_i := instrRvalid
   u_top.instr_rdata_i := instrRdata

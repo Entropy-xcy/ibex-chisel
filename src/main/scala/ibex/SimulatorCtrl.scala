@@ -181,3 +181,26 @@ class UvmTestStatusCtrl(logName: String = "ibex_uvm_test_status.log")
       |endmodule
       |""".stripMargin)
 }
+
+class PlusArgUInt32(name: String, default: BigInt) extends ExtModule(Map(
+  "Name" -> StringParam(name),
+  "DefaultValue" -> IntParam(default.toInt))) {
+  val out_o = IO(Output(UInt(32.W)))
+
+  override def desiredName: String = "PlusArgUInt32"
+
+  setInline("PlusArgUInt32.sv",
+    """module PlusArgUInt32 #(
+      |  parameter string Name = "value",
+      |  parameter int unsigned DefaultValue = 32'h0
+      |) (
+      |  output logic [31:0] out_o
+      |);
+      |
+      |  initial begin
+      |    out_o = DefaultValue[31:0];
+      |    void'($value$plusargs({Name, "=%h"}, out_o));
+      |  end
+      |endmodule
+      |""".stripMargin)
+}
