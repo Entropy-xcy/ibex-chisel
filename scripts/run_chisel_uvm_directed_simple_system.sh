@@ -14,6 +14,7 @@ timeout_s="${IBEX_UVM_DIRECTED_TIMEOUT_S:-300}"
 ram_size_bytes="${IBEX_UVM_DIRECTED_RAM_SIZE_BYTES:-4194304}"
 ram_depth_words=$((ram_size_bytes / 4))
 test_filter="${IBEX_UVM_DIRECTED_TEST_FILTER:-}"
+test_exclude="${IBEX_UVM_DIRECTED_TEST_EXCLUDE:-}"
 
 tests_dir="${compile_out}/run/tests"
 if [[ ! -d "${tests_dir}" ]]; then
@@ -125,6 +126,9 @@ while IFS= read -r -d '' test_dir; do
   if [[ -n "${test_filter}" ]] && ! [[ "${test_name}" =~ ${test_filter} ]]; then
     continue
   fi
+  if [[ -n "${test_exclude}" ]] && [[ "${test_name}" =~ ${test_exclude} ]]; then
+    continue
+  fi
   for cfg in "${configs[@]}"; do
     printf 'run_one %q %q\n' "${cfg}" "${test_dir}" >> "${cmds}"
   done
@@ -135,6 +139,7 @@ echo "[uvm-directed] running ${total} directed binary simulations with ${jobs} j
 xargs -r -d '\n' -P "${jobs}" -I{} bash -euo pipefail -c '{}' < "${cmds}"
 
 for cfg in "${configs[@]}"; do
+  mkdir -p "${out_root}/logs/run/${cfg}"
   summary="${out_root}/logs/run/${cfg}/summary.txt"
   {
     echo "total ${total}"
