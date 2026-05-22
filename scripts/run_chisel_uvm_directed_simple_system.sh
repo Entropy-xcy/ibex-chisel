@@ -71,16 +71,12 @@ run_one() {
   fi
 
   if [[ "${test_name}" == test_pmp_* ]]; then
-    if [[ ! -f "${bin}" ]]; then
-      echo "error: missing test binary: ${bin}" >&2
-      return 1
-    fi
-    if [[ ! -f "${vmem}" || "${bin}" -nt "${vmem}" ]]; then
+    if [[ ! -f "${vmem}" || "${elf}" -nt "${vmem}" ]]; then
       "${repo_root}/scripts/elf_to_chisel_vmem.py" \
-        --bin "${bin}" \
+        --elf "${elf}" \
         --out "${vmem}" \
         --ram-size-bytes "${ram_size_bytes}" \
-        --bin-base-addr 0x80000000
+        --mseccfg-layout
     fi
   elif [[ ! -f "${vmem}" || "${elf}" -nt "${vmem}" ]]; then
     "${repo_root}/scripts/elf_to_chisel_vmem.py" \
