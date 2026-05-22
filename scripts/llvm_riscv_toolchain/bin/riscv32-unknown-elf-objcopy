@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "${script_dir}/../../.." && pwd)"
+xpack_objcopy="$(find "${repo_root}/tools/xpack-riscv" -path '*/bin/riscv-none-elf-objcopy' -type f -perm -u+x 2>/dev/null | sort | tail -n 1)"
+
+if [[ -n "${xpack_objcopy}" ]]; then
+  exec "${xpack_objcopy}" "$@"
+fi
+
 exec llvm-objcopy "$@"

@@ -1,0 +1,6 @@
+#ifndef IBEX_LLVM_RISCV_SYS_SIGNAL_H_
+#define IBEX_LLVM_RISCV_SYS_SIGNAL_H_
+
+#define SIGABRT 6
+
+#endif

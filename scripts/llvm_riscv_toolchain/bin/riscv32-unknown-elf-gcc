@@ -4,10 +4,62 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/../../.." && pwd)"
 local_lld="${repo_root}/tools/lld-local"
+toolchain_include="${repo_root}/scripts/llvm_riscv_toolchain/include"
+xpack_gcc="$(find "${repo_root}/tools/xpack-riscv" -path '*/bin/riscv-none-elf-gcc' -type f -perm -u+x 2>/dev/null | sort | tail -n 1)"
+
+if [[ -n "${xpack_gcc}" ]]; then
+  args=("-Dsptbr=satp" "-Dmbadaddr=mtval" "-Dsbadaddr=stval")
+  has_march=0
+  compile_only=0
+  for arg in "$@"; do
+    case "${arg}" in
+      -c|-S|-E)
+        compile_only=1
+        args+=("${arg}")
+        ;;
+      -march=*)
+        has_march=1
+        march="${arg#-march=}"
+        [[ "${march}" == *zicsr* ]] || march="${march}_zicsr"
+        [[ "${march}" == *zifencei* ]] || march="${march}_zifencei"
+        args+=("-march=${march}")
+        ;;
+      *)
+        args+=("${arg}")
+        ;;
+    esac
+  done
+  if [[ "${has_march}" == 0 ]]; then
+    args=("-march=rv32imc_zicsr_zifencei" "${args[@]}")
+  fi
+  if [[ "${compile_only}" == 0 && -f "${repo_root}/scripts/llvm_riscv_toolchain/src/ibex_baremetal_stubs.c" ]]; then
+    args+=("${repo_root}/scripts/llvm_riscv_toolchain/src/ibex_baremetal_stubs.c")
+  fi
+  exec "${xpack_gcc}" "${args[@]}"
+fi
 
 if [[ -x "${local_lld}/usr/bin/ld.lld" ]]; then
   export PATH="${local_lld}/usr/bin:${PATH}"
   export LD_LIBRARY_PATH="${local_lld}/usr/lib64:${LD_LIBRARY_PATH:-}"
 fi
 
-clang --target=riscv32-unknown-elf "$@"
+args=()
+if [[ -d "${toolchain_include}" ]]; then
+  args+=("-isystem" "${toolchain_include}")
+fi
+
+for arg in "$@"; do
+  case "${arg}" in
+    -fno-section-anchors)
+      ;;
+    -lgcc)
+      ;;
+    -lm)
+      ;;
+    *)
+      args+=("${arg}")
+      ;;
+  esac
+done
+
+clang --target=riscv32-unknown-elf "${args[@]}"
