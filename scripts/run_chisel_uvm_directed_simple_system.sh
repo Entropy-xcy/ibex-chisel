@@ -32,7 +32,7 @@ for cfg in "${configs[@]}"; do
     --top top-tracing \
     --target-dir "${out_root}/${cfg}" \
     --ram-depth "${ram_depth_words}" \
-    --ram-base-addr 0x00100000 \
+    --ram-base-addr 0x00000000 \
     --ram-addr-mask 0x00000000 \
     --uvm-test-status-ctrl
 
