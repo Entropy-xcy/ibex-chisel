@@ -58,6 +58,7 @@ run_one() {
   local run_dir="${repo_root}/${out_root}/logs/run/${cfg}/${test_name}"
   local stdout="${run_dir}/stdout"
   local status_log="${run_dir}/ibex_uvm_test_status.log"
+  local tohost_status_log="${run_dir}/ibex_tohost_test_status.log"
   local result_file="${run_dir}/result"
 
   if [[ ! -x "${sim_bin}" ]]; then
@@ -91,9 +92,14 @@ run_one() {
       > "${stdout}" 2>&1
   ) || sim_status=$?
 
-  if rg -q "UVM directed test PASS signature observed" "${stdout}" &&
-      [[ -f "${status_log}" ]] &&
-      rg -q "0x00000001" "${status_log}"; then
+  local pass_status_seen=0
+  if [[ -f "${status_log}" ]] && rg -q "0x00000001" "${status_log}"; then
+    pass_status_seen=1
+  fi
+  if [[ -f "${tohost_status_log}" ]] && rg -q "0x00000001" "${tohost_status_log}"; then
+    pass_status_seen=1
+  fi
+  if rg -q "UVM directed test PASS signature observed" "${stdout}" && [[ "${pass_status_seen}" == 1 ]]; then
     echo "PASS" > "${result_file}"
     return 0
   fi

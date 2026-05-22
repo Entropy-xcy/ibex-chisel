@@ -36,7 +36,7 @@ class IbexSimpleSystem(
     extends RawModule {
   override def desiredName: String = "ibex_simple_system"
 
-  private val nrDevices = if (uvmTestStatusCtrl) 4 else 3
+  private val nrDevices = if (uvmTestStatusCtrl) 5 else 3
   private val nrHosts = 1
   private val ramBaseAddr = ramBaseAddrValue.U(32.W)
   private val ramMask = ramAddrMaskValue.U(32.W)
@@ -46,6 +46,8 @@ class IbexSimpleSystem(
   private val timerMask = "hfffffc00".U(32.W)
   private val uvmTestStatusBaseAddr = "h8ffffff0".U(32.W)
   private val uvmTestStatusMask = "hfffffff0".U(32.W)
+  private val tohostTestStatusBaseAddr = "h80001000".U(32.W)
+  private val tohostTestStatusMask = "hfffffff0".U(32.W)
 
   val IO_CLK = IO(Input(Clock()))
   val IO_RST_N = IO(Input(Bool()))
@@ -75,6 +77,12 @@ class IbexSimpleSystem(
   val u_boot_addr = Module(new PlusArgUInt32(name = "boot_addr", default = ramBaseAddrValue))
   val u_uvm_test_status_ctrl =
     if (uvmTestStatusCtrl) Some(Module(new UvmTestStatusCtrl(logName = "ibex_uvm_test_status.log"))) else None
+  val u_tohost_test_status_ctrl =
+    if (uvmTestStatusCtrl) {
+      Some(Module(new UvmTestStatusCtrl(logName = "ibex_tohost_test_status.log", statusAddrLowNibble = 0)))
+    } else {
+      None
+    }
 
   val u_top = Module(new IbexTopTracing(
     secureIbex = secureIbex,
@@ -172,6 +180,8 @@ class IbexSimpleSystem(
   if (uvmTestStatusCtrl) {
     u_bus.cfg_device_addr_base(3) := uvmTestStatusBaseAddr
     u_bus.cfg_device_addr_mask(3) := uvmTestStatusMask
+    u_bus.cfg_device_addr_base(4) := tohostTestStatusBaseAddr
+    u_bus.cfg_device_addr_mask(4) := tohostTestStatusMask
   }
 
   u_ram.clk_i := IO_CLK
@@ -227,6 +237,19 @@ class IbexSimpleSystem(
     deviceRvalid(3) := ctrl.rvalid_o
     deviceRdata(3) := ctrl.rdata_o
     deviceErr(3) := false.B
+  }
+
+  u_tohost_test_status_ctrl.foreach { ctrl =>
+    ctrl.clk_i := IO_CLK
+    ctrl.rst_ni := IO_RST_N
+    ctrl.req_i := deviceReq(4)
+    ctrl.we_i := deviceWe(4)
+    ctrl.be_i := deviceBe(4)
+    ctrl.addr_i := deviceAddr(4)
+    ctrl.wdata_i := deviceWdata(4)
+    deviceRvalid(4) := ctrl.rvalid_o
+    deviceRdata(4) := ctrl.rdata_o
+    deviceErr(4) := false.B
   }
 
   if (secureIbex) {

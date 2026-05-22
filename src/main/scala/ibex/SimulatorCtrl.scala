@@ -107,8 +107,12 @@ class SimulatorCtrl(
       |""".stripMargin)
 }
 
-class UvmTestStatusCtrl(logName: String = "ibex_uvm_test_status.log")
-    extends ExtModule(Map("LogName" -> StringParam(logName))) {
+class UvmTestStatusCtrl(
+    logName: String = "ibex_uvm_test_status.log",
+    statusAddrLowNibble: Int = 8)
+    extends ExtModule(Map(
+      "LogName" -> StringParam(logName),
+      "StatusAddrLowNibble" -> IntParam(statusAddrLowNibble))) {
   val clk_i = IO(Input(Clock()))
   val rst_ni = IO(Input(Bool()))
 
@@ -127,7 +131,8 @@ class UvmTestStatusCtrl(logName: String = "ibex_uvm_test_status.log")
       |// The riscv-tests/riscv-arch-tests pass/fail macros write 0x700 followed
       |// by 0x1 on pass, or 0x101 on fail, to the UVM signature address.
       |module UvmTestStatusCtrl #(
-      |  parameter string LogName = "ibex_uvm_test_status.log"
+      |  parameter string LogName = "ibex_uvm_test_status.log",
+      |  parameter int unsigned StatusAddrLowNibble = 8
       |) (
       |  input               clk_i,
       |  input               rst_ni,
@@ -159,7 +164,7 @@ class UvmTestStatusCtrl(logName: String = "ibex_uvm_test_status.log")
       |    end else begin
       |      rvalid_o <= req_i;
       |
-      |      if (req_i & we_i & be_i[0] & (addr_i[3:0] == 4'h8)) begin
+      |      if (req_i & we_i & be_i[0] & (addr_i[3:0] == StatusAddrLowNibble[3:0])) begin
       |        $fwrite(log_fd, "0x%08x\n", wdata_i);
       |        $fflush(log_fd);
       |
