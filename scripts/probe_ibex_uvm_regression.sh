@@ -13,12 +13,19 @@ test_name="${TEST:-riscv_arithmetic_basic_test}"
 seed="${SEED:-1}"
 iterations="${ITERATIONS:-1}"
 local_spike_pkgconfig="${repo_root}/tools/spike-ibex-cosim/lib/pkgconfig"
+llvm_riscv_toolchain="${repo_root}/scripts/llvm_riscv_toolchain"
 
 mkdir -p "$(dirname "${log}")"
 
 if [[ -d "${local_spike_pkgconfig}" ]]; then
   export PKG_CONFIG_PATH="${local_spike_pkgconfig}:${PKG_CONFIG_PATH:-}"
   export LD_LIBRARY_PATH="${repo_root}/tools/spike-ibex-cosim/lib:${LD_LIBRARY_PATH:-}"
+fi
+
+if [[ -x "${llvm_riscv_toolchain}/bin/riscv32-unknown-elf-gcc" ]]; then
+  export RISCV_TOOLCHAIN="${RISCV_TOOLCHAIN:-${llvm_riscv_toolchain}}"
+  export RISCV_GCC="${RISCV_GCC:-${llvm_riscv_toolchain}/bin/riscv32-unknown-elf-gcc}"
+  export RISCV_OBJCOPY="${RISCV_OBJCOPY:-${llvm_riscv_toolchain}/bin/riscv32-unknown-elf-objcopy}"
 fi
 
 missing=()
@@ -46,6 +53,8 @@ if command -v pkg-config >/dev/null 2>&1 &&
    ! pkg-config --exists riscv-riscv riscv-disasm riscv-fdt riscv-fesvr; then
   missing+=("lowRISC Spike pkg-config packages")
 fi
+command -v "${RISCV_GCC:-riscv32-unknown-elf-gcc}" >/dev/null 2>&1 || missing+=("${RISCV_GCC:-riscv32-unknown-elf-gcc}")
+command -v "${RISCV_OBJCOPY:-riscv32-unknown-elf-objcopy}" >/dev/null 2>&1 || missing+=("${RISCV_OBJCOPY:-riscv32-unknown-elf-objcopy}")
 
 if ((${#missing[@]})); then
   printf 'Missing UVM prerequisites: %s\n' "${missing[*]}" | tee "${log}"
@@ -62,6 +71,9 @@ fi
     ITERATIONS="${iterations}" \
     SEED="${seed}" \
     TEST="${test_name}" \
+    RISCV_TOOLCHAIN="${RISCV_TOOLCHAIN:-}" \
+    RISCV_GCC="${RISCV_GCC:-}" \
+    RISCV_OBJCOPY="${RISCV_OBJCOPY:-}" \
     WAVES=0 \
     COV=0 \
     GOAL=rtl_tb_compile

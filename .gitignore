@@ -315,6 +315,8 @@ xcuserdata
 /generated/
 /tools/src/
 /tools/spike-ibex-cosim/
+/tools/lld-local/
+/tools/rpms/
 /ibex_simple_system_pcount.csv
 /sim.fst
 /externals/ibex/sim.fst

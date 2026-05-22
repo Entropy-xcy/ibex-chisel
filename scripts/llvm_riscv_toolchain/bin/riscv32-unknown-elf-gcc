@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "${script_dir}/../../.." && pwd)"
+local_lld="${repo_root}/tools/lld-local"
+
+if [[ -x "${local_lld}/usr/bin/ld.lld" ]]; then
+  export PATH="${local_lld}/usr/bin:${PATH}"
+  export LD_LIBRARY_PATH="${local_lld}/usr/lib64:${LD_LIBRARY_PATH:-}"
+fi
+
+clang --target=riscv32-unknown-elf "$@"

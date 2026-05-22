@@ -9,10 +9,17 @@ term_after_cycles="${IBEX_REGRESSION_TERM_AFTER_CYCLES:-5000000}"
 out_root="${IBEX_REGRESSION_OUT:-generated/regression}"
 build_root="${IBEX_REGRESSION_BUILD_ROOT:-build/chisel-regression}"
 local_spike_pkgconfig="${repo_root}/tools/spike-ibex-cosim/lib/pkgconfig"
+llvm_riscv_toolchain="${repo_root}/scripts/llvm_riscv_toolchain"
 
 if [[ -d "${local_spike_pkgconfig}" ]]; then
   export PKG_CONFIG_PATH="${local_spike_pkgconfig}:${PKG_CONFIG_PATH:-}"
   export LD_LIBRARY_PATH="${repo_root}/tools/spike-ibex-cosim/lib:${LD_LIBRARY_PATH:-}"
+fi
+
+if [[ -x "${llvm_riscv_toolchain}/bin/riscv32-unknown-elf-gcc" ]]; then
+  export RISCV_TOOLCHAIN="${RISCV_TOOLCHAIN:-${llvm_riscv_toolchain}}"
+  export RISCV_GCC="${RISCV_GCC:-${llvm_riscv_toolchain}/bin/riscv32-unknown-elf-gcc}"
+  export RISCV_OBJCOPY="${RISCV_OBJCOPY:-${llvm_riscv_toolchain}/bin/riscv32-unknown-elf-objcopy}"
 fi
 
 configs=(${IBEX_REGRESSION_CONFIGS:-small opentitan maxperf maxperf-pmp-bmbalanced})
@@ -92,7 +99,7 @@ done
 run_parallel "running CS-registers DV wrapper" "${csr_cmds}"
 
 uvm_missing=()
-for tool in xrun pkg-config riscv32-unknown-elf-gcc riscv32-unknown-elf-objcopy; do
+for tool in xrun pkg-config "${RISCV_GCC:-riscv32-unknown-elf-gcc}" "${RISCV_OBJCOPY:-riscv32-unknown-elf-objcopy}"; do
   if ! command -v "${tool}" >/dev/null 2>&1; then
     uvm_missing+=("${tool}")
   fi
