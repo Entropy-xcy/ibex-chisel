@@ -15,6 +15,7 @@ ram_size_bytes="${IBEX_UVM_DIRECTED_RAM_SIZE_BYTES:-4194304}"
 ram_depth_words=$((ram_size_bytes / 4))
 test_filter="${IBEX_UVM_DIRECTED_TEST_FILTER:-}"
 test_exclude="${IBEX_UVM_DIRECTED_TEST_EXCLUDE:-}"
+pmp_load_mode="${IBEX_UVM_DIRECTED_PMP_LOAD_MODE:-original-bin}"
 
 tests_dir="${compile_out}/run/tests"
 if [[ ! -d "${tests_dir}" ]]; then
@@ -72,11 +73,33 @@ run_one() {
 
   if [[ "${test_name}" == test_pmp_* ]]; then
     if [[ ! -f "${vmem}" || "${bin}" -nt "${vmem}" ]]; then
-      "${repo_root}/scripts/elf_to_chisel_vmem.py" \
-        --bin "${bin}" \
-        --bin-base-addr 0x80000000 \
-        --out "${vmem}" \
-        --ram-size-bytes "${ram_size_bytes}"
+      case "${pmp_load_mode}" in
+        original-bin)
+          "${repo_root}/scripts/elf_to_chisel_vmem.py" \
+            --bin "${bin}" \
+            --bin-base-addr 0x80000000 \
+            --out "${vmem}" \
+            --ram-size-bytes "${ram_size_bytes}"
+          ;;
+        mseccfg-layout)
+          "${repo_root}/scripts/elf_to_chisel_vmem.py" \
+            --elf "${elf}" \
+            --mseccfg-layout \
+            --out "${vmem}" \
+            --ram-size-bytes "${ram_size_bytes}"
+          ;;
+        elf-offset)
+          "${repo_root}/scripts/elf_to_chisel_vmem.py" \
+            --elf "${elf}" \
+            --load-addr-offset 0x80000000 \
+            --out "${vmem}" \
+            --ram-size-bytes "${ram_size_bytes}"
+          ;;
+        *)
+          echo "error: unknown IBEX_UVM_DIRECTED_PMP_LOAD_MODE=${pmp_load_mode}" >&2
+          return 1
+          ;;
+      esac
     fi
   elif [[ ! -f "${vmem}" || "${elf}" -nt "${vmem}" ]]; then
     "${repo_root}/scripts/elf_to_chisel_vmem.py" \
@@ -130,7 +153,7 @@ run_one() {
 }
 
 export -f run_one
-export repo_root build_root out_root term_after_cycles timeout_s ram_size_bytes
+export repo_root build_root out_root term_after_cycles timeout_s ram_size_bytes pmp_load_mode
 
 cmds="$(mktemp)"
 trap 'rm -f "${cmds}"' EXIT
