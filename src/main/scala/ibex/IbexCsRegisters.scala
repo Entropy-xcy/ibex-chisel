@@ -361,6 +361,10 @@ class IbexCsRegisters(
       is(csr(IbexPkg.CsrNum.MCYCLEH)) { rawRdata := mcycle.pad(64)(63, 32) }
       is(csr(IbexPkg.CsrNum.MINSTRET)) { rawRdata := minstretRdata(31, 0) }
       is(csr(IbexPkg.CsrNum.MINSTRETH)) { rawRdata := minstretRdata(63, 32) }
+      is(csr(IbexPkg.CsrNum.CYCLE)) { rawRdata := mcycle.pad(64)(31, 0) }
+      is(csr(IbexPkg.CsrNum.CYCLEH)) { rawRdata := mcycle.pad(64)(63, 32) }
+      is(csr(IbexPkg.CsrNum.INSTRET)) { rawRdata := minstretRdata(31, 0) }
+      is(csr(IbexPkg.CsrNum.INSTRETH)) { rawRdata := minstretRdata(63, 32) }
       is(csr(IbexPkg.CsrNum.CPUCTRLSTS)) { rawRdata := cpuctrlstsRdata }
       is(csr(IbexPkg.CsrNum.SECURESEED)) { rawRdata := 0.U }
     }
@@ -423,6 +427,10 @@ class IbexCsRegisters(
       csr_addr_i === csr(IbexPkg.CsrNum.MCYCLEH) ||
       csr_addr_i === csr(IbexPkg.CsrNum.MINSTRET) ||
       csr_addr_i === csr(IbexPkg.CsrNum.MINSTRETH) ||
+      csr_addr_i === csr(IbexPkg.CsrNum.CYCLE) ||
+      csr_addr_i === csr(IbexPkg.CsrNum.CYCLEH) ||
+      csr_addr_i === csr(IbexPkg.CsrNum.INSTRET) ||
+      csr_addr_i === csr(IbexPkg.CsrNum.INSTRETH) ||
       csr_addr_i === csr(IbexPkg.CsrNum.CPUCTRLSTS) ||
       csr_addr_i === csr(IbexPkg.CsrNum.SECURESEED))) {
       illegalCsr := true.B

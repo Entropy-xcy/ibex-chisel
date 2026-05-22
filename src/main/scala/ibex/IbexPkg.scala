@@ -313,6 +313,10 @@ object IbexPkg {
     val MINSTRETH = 0xb82
     val MHPMCOUNTER3H = 0xb83
     val MHPMCOUNTER31H = 0xb9f
+    val CYCLE = 0xc00
+    val INSTRET = 0xc02
+    val CYCLEH = 0xc80
+    val INSTRETH = 0xc82
     val CPUCTRLSTS = 0x7c0
     val SECURESEED = 0x7c1
 

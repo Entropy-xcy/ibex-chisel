@@ -919,6 +919,26 @@ class IbexCsRegistersSpec extends AnyFreeSpec with Matchers with ChiselSim {
       }
     }
 
+    "exposes read-only zicntr counter aliases" in {
+      simulate(new Harness) { dut =>
+        reset(dut)
+
+        read(dut, IbexPkg.CsrNum.CYCLE) mustBe read(dut, IbexPkg.CsrNum.MCYCLE)
+        dut.io.illegal_csr_insn_o.expect(false.B)
+        read(dut, IbexPkg.CsrNum.CYCLEH) mustBe 0
+        dut.io.illegal_csr_insn_o.expect(false.B)
+        read(dut, IbexPkg.CsrNum.INSTRET) mustBe read(dut, IbexPkg.CsrNum.MINSTRET)
+        dut.io.illegal_csr_insn_o.expect(false.B)
+        read(dut, IbexPkg.CsrNum.INSTRETH) mustBe 0
+        dut.io.illegal_csr_insn_o.expect(false.B)
+
+        dut.io.csr_access_i.poke(true.B)
+        dut.io.csr_addr_i.poke(IbexPkg.CsrNum.CYCLE.U)
+        dut.io.csr_op_i.poke(Op.Write.U)
+        dut.io.illegal_csr_insn_o.expect(true.B)
+      }
+    }
+
     "uses hardwired performance counter events and masks mcountinhibit bits" in {
       simulate(new Harness(mhpmCounterNum = 10)) { dut =>
         reset(dut)
