@@ -1,0 +1,181 @@
+CAPI=2:
+name: "local:ibex_chisel:original_sv_uvm_directed_simple_system:0.1"
+description: "Original Ibex RTL simple_system harness for UVM directed Verilator proxy tests"
+
+filesets:
+  files_sim:
+    depend:
+      - lowrisc:ibex:ibex_top_tracing
+      - lowrisc:ibex:sim_shared
+    files:
+      - rtl/uvm_test_status_ctrl.sv
+      - rtl/ibex_simple_system.sv
+    file_type: systemVerilogSource
+
+  files_verilator:
+    depend:
+      - lowrisc:dv_verilator:memutil_verilator
+      - lowrisc:dv_verilator:simutil_verilator
+      - lowrisc:dv_verilator:ibex_pcounts
+    files:
+      - ../../externals/ibex/examples/simple_system/ibex_simple_system.cc: { file_type: cppSource }
+      - ../../externals/ibex/examples/simple_system/ibex_simple_system.h: { file_type: cppSource, is_include_file: true }
+      - ../../externals/ibex/examples/simple_system/ibex_simple_system_main.cc: { file_type: cppSource }
+      - ../../externals/ibex/examples/simple_system/lint/verilator_waiver.vlt: { file_type: vlt }
+
+parameters:
+  RV32E:
+    datatype: int
+    default: 0
+    paramtype: vlogparam
+
+  RV32M:
+    datatype: str
+    default: ibex_pkg::RV32MFast
+    paramtype: vlogdefine
+
+  RV32B:
+    datatype: str
+    default: ibex_pkg::RV32BNone
+    paramtype: vlogdefine
+
+  RV32ZC:
+    datatype: str
+    default: ibex_pkg::RV32ZcaZcbZcmp
+    paramtype: vlogdefine
+
+  RegFile:
+    datatype: str
+    default: ibex_pkg::RegFileFF
+    paramtype: vlogdefine
+
+  INSTR_CYCLE_DELAY:
+    datatype: int
+    default: 0
+    paramtype: vlogdefine
+
+  ICache:
+    datatype: int
+    default: 0
+    paramtype: vlogparam
+
+  ICacheECC:
+    datatype: int
+    default: 0
+    paramtype: vlogparam
+
+  BranchTargetALU:
+    datatype: int
+    default: 0
+    paramtype: vlogparam
+
+  WritebackStage:
+    datatype: int
+    default: 0
+    paramtype: vlogparam
+
+  SecureIbex:
+    datatype: int
+    default: 0
+    paramtype: vlogparam
+
+  ICacheScramble:
+    datatype: int
+    default: 0
+    paramtype: vlogparam
+
+  BranchPredictor:
+    datatype: int
+    default: 0
+    paramtype: vlogparam
+
+  DbgTriggerEn:
+    datatype: int
+    default: 0
+    paramtype: vlogparam
+
+  PMPEnable:
+    datatype: int
+    default: 0
+    paramtype: vlogparam
+
+  PMPGranularity:
+    datatype: int
+    default: 0
+    paramtype: vlogparam
+
+  PMPNumRegions:
+    datatype: int
+    default: 4
+    paramtype: vlogparam
+
+  MHPMCounterNum:
+    datatype: int
+    default: 0
+    paramtype: vlogparam
+
+  MHPMCounterWidth:
+    datatype: int
+    default: 40
+    paramtype: vlogparam
+
+  SRAMInitFile:
+    datatype: str
+    paramtype: vlogparam
+
+targets:
+  default: &default_target
+    filesets:
+      - files_sim
+      - tool_verilator ? (files_verilator)
+    toplevel: ibex_simple_system
+    parameters:
+      - RV32E
+      - RV32M
+      - RV32B
+      - RV32ZC
+      - RegFile
+      - INSTR_CYCLE_DELAY
+      - ICache
+      - ICacheECC
+      - BranchTargetALU
+      - WritebackStage
+      - SecureIbex
+      - ICacheScramble
+      - BranchPredictor
+      - DbgTriggerEn
+      - PMPEnable
+      - PMPGranularity
+      - PMPNumRegions
+      - MHPMCounterNum
+      - MHPMCounterWidth
+      - SRAMInitFile
+
+  sim:
+    <<: *default_target
+    default_tool: verilator
+    tools:
+      verilator:
+        mode: cc
+        verilator_options:
+          - "-Wall"
+          - "-Wno-fatal"
+          - "-Wno-CASEINCOMPLETE"
+          - "-Wno-UNOPTFLAT"
+          - "-Wno-UNPACKED"
+          - "-Wno-UNSIGNED"
+          - "-Wno-WIDTH"
+          - "-Wno-WIDTHCONCAT"
+          - "-Wno-UNUSEDSIGNAL"
+          - "-Wno-UNUSEDPARAM"
+          - "-Wno-PINMISSING"
+          - "-Wno-SYMRSVDWORD"
+          - "-Wno-BLKSEQ"
+          - "--trace"
+          - "--trace-fst"
+          - "--trace-structs"
+          - "--trace-params"
+          - "--trace-max-array 1024"
+          - '-CFLAGS "-std=c++17 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=ibex_simple_system -g"'
+          - '-LDFLAGS "-pthread -lutil -lelf"'
+          - "--unroll-count 72"
