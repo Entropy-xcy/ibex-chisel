@@ -543,6 +543,24 @@ class IbexCsRegistersSpec extends AnyFreeSpec with Matchers with ChiselSim {
       }
     }
 
+    "programs an unlocked full-address NAPOT PMP region" in {
+      simulate(new Harness(pmpEnable = true, pmpNumRegions = 4)) { dut =>
+        reset(dut)
+
+        write(dut, IbexPkg.CsrNum.PMPADDR0, BigInt("7fffffff", 16))
+        write(dut, IbexPkg.CsrNum.PMPCFG0, 0x1f)
+
+        read(dut, IbexPkg.CsrNum.PMPADDR0) mustBe BigInt("7fffffff", 16)
+        read(dut, IbexPkg.CsrNum.PMPCFG0) mustBe 0x1f
+        dut.io.csr_pmp_addr_o(0).expect(BigInt("1fffffffc", 16).U)
+        dut.io.csr_pmp_cfg_o(0).lock.expect(false.B)
+        dut.io.csr_pmp_cfg_o(0).mode.expect(IbexPkg.PmpCfgMode.Napot)
+        dut.io.csr_pmp_cfg_o(0).exec.expect(true.B)
+        dut.io.csr_pmp_cfg_o(0).write.expect(true.B)
+        dut.io.csr_pmp_cfg_o(0).read.expect(true.B)
+      }
+    }
+
     "applies PMP granularity address readback rules and outputs expanded PMP addresses" in {
       simulate(new Harness(pmpEnable = true, pmpGranularity = 2, pmpNumRegions = 1)) { dut =>
         reset(dut)
