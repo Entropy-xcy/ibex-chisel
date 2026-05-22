@@ -107,6 +107,23 @@ class IbexPmpSpec extends AnyFreeSpec with Matchers with ChiselSim {
       }
     }
 
+    "matches a full-address NAPOT region" in {
+      simulate(new Harness) { dut =>
+        init(dut)
+        setCfg(dut, 0, IbexPkg.PmpCfgMode.Napot, read = true, write = true, exec = true)
+        dut.io.csr_pmp_addr_i(0).poke("h1fffffffc".U)
+        dut.io.priv_mode_i(0).poke(IbexPkg.PrivLvl.U)
+        dut.io.pmp_req_addr_i(0).poke("h80003000".U)
+
+        dut.io.pmp_req_type_i(0).poke(IbexPkg.PmpReq.Read)
+        dut.io.pmp_req_err_o(0).expect(false.B)
+        dut.io.pmp_req_type_i(0).poke(IbexPkg.PmpReq.Write)
+        dut.io.pmp_req_err_o(0).expect(false.B)
+        dut.io.pmp_req_type_i(0).poke(IbexPkg.PmpReq.Exec)
+        dut.io.pmp_req_err_o(0).expect(false.B)
+      }
+    }
+
     "allows debug module accesses in debug mode even when default policy denies" in {
       simulate(new Harness) { dut =>
         init(dut)
