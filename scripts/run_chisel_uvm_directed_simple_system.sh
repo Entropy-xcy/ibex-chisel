@@ -70,11 +70,17 @@ run_one() {
     return 1
   fi
 
-  if [[ ! -f "${vmem}" || "${elf}" -nt "${vmem}" ]]; then
+  local load_addr_offset=0
+  if [[ "${test_name}" == test_pmp_* ]]; then
+    load_addr_offset=0x80000000
+  fi
+
+  if [[ "${load_addr_offset}" != 0 || ! -f "${vmem}" || "${elf}" -nt "${vmem}" ]]; then
     "${repo_root}/scripts/elf_to_chisel_vmem.py" \
       --elf "${elf}" \
       --out "${vmem}" \
-      --ram-size-bytes "${ram_size_bytes}"
+      --ram-size-bytes "${ram_size_bytes}" \
+      --load-addr-offset "${load_addr_offset}"
   fi
   local boot boot_addr
   boot="$(sed -n 's,^// boot=0x,,p' "${vmem}" | head -1)"

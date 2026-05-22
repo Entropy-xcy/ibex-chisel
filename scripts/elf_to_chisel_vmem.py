@@ -19,6 +19,7 @@ def main() -> int:
     parser.add_argument("--elf", required=True)
     parser.add_argument("--out", required=True)
     parser.add_argument("--ram-size-bytes", type=parse_int, required=True)
+    parser.add_argument("--load-addr-offset", type=parse_int, default=0)
     args = parser.parse_args()
 
     with open(args.elf, "rb") as f:
@@ -50,16 +51,17 @@ def main() -> int:
 
         section = data[sh_offset:sh_offset + sh_size]
         for byte_idx, byte in enumerate(section):
-            mem_addr = (sh_addr + byte_idx) % args.ram_size_bytes
+            mem_addr = (sh_addr + args.load_addr_offset + byte_idx) % args.ram_size_bytes
             word_idx = mem_addr // 4
             shift = (mem_addr % 4) * 8
             old = words.get(word_idx, 0)
             words[word_idx] = (old & ~(0xFF << shift)) | (byte << shift)
 
     with open(args.out, "w", encoding="ascii") as f:
-        f.write(f"// entry=0x{e_entry:08x}\n")
+        f.write(f"// entry=0x{(e_entry + args.load_addr_offset) & 0xFFFFFFFF:08x}\n")
+        f.write(f"// load_addr_offset=0x{args.load_addr_offset & 0xFFFFFFFF:08x}\n")
         if lowest_load_addr is not None:
-            f.write(f"// boot=0x{(lowest_load_addr + 0x80) & 0xFFFFFFFF:08x}\n")
+            f.write(f"// boot=0x{(lowest_load_addr + args.load_addr_offset + 0x80) & 0xFFFFFFFF:08x}\n")
         last_idx = None
         for word_idx in sorted(words):
             if last_idx is None or word_idx != last_idx + 1:
