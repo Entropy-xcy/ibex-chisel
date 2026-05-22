@@ -49,6 +49,18 @@ class IbexTracerTextSpec extends AnyFreeSpec with Matchers {
       IbexTracerText.decodeInstruction(BigInt("403140b3", 16)) mustBe "xnor\tx1,x2,x3"
     }
 
+    "decodes representative compressed instructions" in {
+      IbexTracerText.decodeInstruction(BigInt("0085", 16)) mustBe "c.addi\tx1,1"
+      IbexTracerText.decodeInstruction(BigInt("4081", 16)) mustBe "c.li\tx1,0"
+      IbexTracerText.decodeInstruction(BigInt("8106", 16)) mustBe "c.mv\tx2,x1"
+      IbexTracerText.decodeInstruction(BigInt("40a2", 16)) mustBe "c.lwsp\tx1,8(x2)"
+      IbexTracerText.decodeInstruction(BigInt("c606", 16)) mustBe "c.swsp\tx1,12(x2)"
+      IbexTracerText.decodeInstruction(BigInt("a001", 16), pcWdata = BigInt("00100010", 16)) mustBe
+        "c.j\t100010"
+      IbexTracerText.decodeInstruction(BigInt("c001", 16), pcRdata = BigInt("00100080", 16)) mustBe
+        "c.beqz\tx8,100080"
+    }
+
     "decodes expanded Zcmp instructions" in {
       val cmPushAllRegs = IbexTracerPkg.INSN_CMPUSH.value.toInt | (15 << 4)
       IbexTracerText.decodeExpandedInsn(cmPushAllRegs) mustBe

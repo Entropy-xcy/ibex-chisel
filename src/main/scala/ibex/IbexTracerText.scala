@@ -269,6 +269,8 @@ object IbexTracerText {
 
   def decodeInstruction(insn: BigInt, pcRdata: BigInt = 0, pcWdata: BigInt = 0): String = {
     val i = insn & Mask32
+    if ((i & 0x3) != 0x3) return decodeCompressedInstruction(i.toInt & 0xffff, pcRdata, pcWdata)
+
     val rd = bits(i, 11, 7)
     val rs1 = bits(i, 19, 15)
     val rs2 = bits(i, 24, 20)
@@ -397,6 +399,95 @@ object IbexTracerText {
       IbexTracerPkg.INSN_SEXTB -> (() => r1("sext.b")),
       IbexTracerPkg.INSN_SEXTH -> (() => r1("sext.h"))
     ).collectFirst { case (pattern, render) if pattern.matches(i) => render() }.getOrElse("INVALID")
+  }
+
+  private def decodeCompressedInstruction(insn: Int, pcRdata: BigInt, pcWdata: BigInt): String = {
+    val i = BigInt(insn & 0xffff)
+    def cReg(field: Int): Int = 8 + field
+    def cImm6(): Int = signed((bit(i, 12) << 5) | bits(i, 6, 2), 6)
+    def cAddi16spImm(): Int =
+      signed(
+        (bit(i, 12) << 9) |
+          (bits(i, 4, 3) << 7) |
+          (bit(i, 5) << 6) |
+          (bit(i, 2) << 5) |
+          (bit(i, 6) << 4),
+        10
+      )
+    def cLwImm(): Int =
+      (bit(i, 5) << 6) | (bits(i, 12, 10) << 3) | (bit(i, 6) << 2)
+    def cLwspImm(): Int =
+      (bits(i, 3, 2) << 6) | (bit(i, 12) << 5) | (bits(i, 6, 4) << 2)
+    def cSwspImm(): Int =
+      (bits(i, 8, 7) << 6) | (bits(i, 12, 9) << 2)
+    def cBranchTarget(): BigInt = {
+      val imm =
+        (bit(i, 12) << 8) |
+          (bits(i, 6, 5) << 6) |
+          (bit(i, 2) << 5) |
+          (bits(i, 11, 10) << 3) |
+          (bits(i, 4, 3) << 1)
+      (pcRdata + signed(imm, 9)) & Mask32
+    }
+
+    bits(i, 1, 0) match {
+      case 0 =>
+        bits(i, 15, 13) match {
+          case 0 =>
+            val imm = (bits(i, 10, 7) << 6) | (bits(i, 12, 11) << 4) | (bit(i, 5) << 3) | (bit(i, 6) << 2)
+            s"c.addi4spn\tx${cReg(bits(i, 4, 2))},x2,$imm"
+          case 2 => s"c.lw\tx${cReg(bits(i, 4, 2))},${cLwImm()}(x${cReg(bits(i, 9, 7))})"
+          case 6 => s"c.sw\tx${cReg(bits(i, 4, 2))},${cLwImm()}(x${cReg(bits(i, 9, 7))})"
+          case _ => "INVALID"
+        }
+      case 1 =>
+        bits(i, 15, 13) match {
+          case 0 => s"c.addi\tx${bits(i, 11, 7)},${cImm6()}"
+          case 1 => s"c.jal\t${hex32(pcWdata)}"
+          case 2 => s"c.li\tx${bits(i, 11, 7)},${cImm6()}"
+          case 3 =>
+            if (bits(i, 11, 7) == 2) s"c.addi16sp\tx2,${cAddi16spImm()}"
+            else {
+              val imm = signed((bit(i, 12) << 5) | bits(i, 6, 2), 6) & ((1 << 20) - 1)
+              s"c.lui\tx${bits(i, 11, 7)},0x${imm.toHexString}"
+            }
+          case 4 =>
+            bits(i, 11, 10) match {
+              case 0 => s"c.srli\tx${cReg(bits(i, 9, 7))},0x${((bit(i, 12) << 5) | bits(i, 6, 2)).toHexString}"
+              case 1 => s"c.srai\tx${cReg(bits(i, 9, 7))},0x${((bit(i, 12) << 5) | bits(i, 6, 2)).toHexString}"
+              case 2 => s"c.andi\tx${cReg(bits(i, 9, 7))},${cImm6()}"
+              case 3 =>
+                bits(i, 12, 10) match {
+                  case 0 => s"c.sub\tx${cReg(bits(i, 9, 7))},x${cReg(bits(i, 4, 2))}"
+                  case 1 => s"c.xor\tx${cReg(bits(i, 9, 7))},x${cReg(bits(i, 4, 2))}"
+                  case 2 => s"c.or\tx${cReg(bits(i, 9, 7))},x${cReg(bits(i, 4, 2))}"
+                  case 3 => s"c.and\tx${cReg(bits(i, 9, 7))},x${cReg(bits(i, 4, 2))}"
+                  case 6 => s"c.mul\tx${cReg(bits(i, 9, 7))},x${cReg(bits(i, 4, 2))}"
+                  case _ => "INVALID"
+                }
+            }
+          case 5 => s"c.j\t${hex32(pcWdata)}"
+          case 6 => s"c.beqz\tx${cReg(bits(i, 9, 7))},${hex32(cBranchTarget())}"
+          case 7 => s"c.bnez\tx${cReg(bits(i, 9, 7))},${hex32(cBranchTarget())}"
+        }
+      case 2 =>
+        bits(i, 15, 13) match {
+          case 0 => s"c.slli\tx${bits(i, 11, 7)},0x${((bit(i, 12) << 5) | bits(i, 6, 2)).toHexString}"
+          case 2 => s"c.lwsp\tx${bits(i, 11, 7)},${cLwspImm()}(x2)"
+          case 4 =>
+            val rd = bits(i, 11, 7)
+            val rs2 = bits(i, 6, 2)
+            if (bit(i, 12) != 0 && rd == 0 && rs2 == 0) "c.ebreak"
+            else if (rs2 == 0) {
+              if (bit(i, 12) != 0) s"c.jalr\tx$rd" else s"c.jr\tx$rd"
+            } else {
+              if (bit(i, 12) != 0) s"c.add\tx$rd,x$rs2" else s"c.mv\tx$rd,x$rs2"
+            }
+          case 6 => s"c.swsp\tx${bits(i, 6, 2)},${cSwspImm()}(x2)"
+          case _ => "INVALID"
+        }
+      case _ => "INVALID"
+    }
   }
 
   private def bit(value: BigInt, index: Int): Int =
