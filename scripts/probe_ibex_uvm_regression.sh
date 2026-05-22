@@ -14,6 +14,7 @@ seed="${SEED:-1}"
 iterations="${ITERATIONS:-1}"
 local_spike_pkgconfig="${repo_root}/tools/spike-ibex-cosim/lib/pkgconfig"
 llvm_riscv_toolchain="${repo_root}/scripts/llvm_riscv_toolchain"
+python_venv="${repo_root}/generated/ibex-python-venv"
 
 mkdir -p "$(dirname "${log}")"
 
@@ -26,6 +27,10 @@ if [[ -x "${llvm_riscv_toolchain}/bin/riscv32-unknown-elf-gcc" ]]; then
   export RISCV_TOOLCHAIN="${RISCV_TOOLCHAIN:-${llvm_riscv_toolchain}}"
   export RISCV_GCC="${RISCV_GCC:-${llvm_riscv_toolchain}/bin/riscv32-unknown-elf-gcc}"
   export RISCV_OBJCOPY="${RISCV_OBJCOPY:-${llvm_riscv_toolchain}/bin/riscv32-unknown-elf-objcopy}"
+fi
+
+if [[ -x "${python_venv}/bin/python" ]]; then
+  export PATH="${python_venv}/bin:${PATH}"
 fi
 
 missing=()
