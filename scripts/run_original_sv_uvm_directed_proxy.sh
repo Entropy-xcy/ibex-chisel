@@ -28,7 +28,10 @@ mkdir -p "${out_root}/logs/build" "${out_root}/logs/run" "${out_root}/vmem"
 
 for cfg in "${configs[@]}"; do
   echo "[original-sv-uvm-directed] building ${cfg} original-SV Verilator proxy"
-  mapfile -t cfg_opts < <(externals/ibex/util/ibex_config.py "${cfg}" fusesoc_opts)
+  cfg_opts_text="$(externals/ibex/util/ibex_config.py \
+    --config_filename externals/ibex/ibex_configs.yaml \
+    "${cfg}" fusesoc_opts)"
+  read -r -a cfg_opts <<< "${cfg_opts_text}"
   fusesoc --cores-root externals/ibex --cores-root dv/original_sv_proxy \
     run --target=sim \
     --build-root "${build_root}/${cfg}/ibex_simple_system" \
