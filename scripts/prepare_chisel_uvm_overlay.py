@@ -179,17 +179,17 @@ def write_patched_tb_top(original: Path, out_file: Path) -> None:
   assign csr_if.csr_op     = ibex_pkg::CSR_OP_READ;
 
   assign ifetch_if.reset           = ~rst_n;
-  assign ifetch_if.fetch_ready     = instr_gnt;
-  assign ifetch_if.fetch_valid     = instr_req;
-  assign ifetch_if.fetch_rdata     = instr_rdata;
-  assign ifetch_if.fetch_addr      = instr_addr;
-  assign ifetch_if.fetch_err       = instr_err;
+  assign ifetch_if.fetch_ready     = instr_mem_vif.grant;
+  assign ifetch_if.fetch_valid     = instr_mem_vif.request;
+  assign ifetch_if.fetch_rdata     = instr_mem_vif.rdata;
+  assign ifetch_if.fetch_addr      = instr_mem_vif.addr;
+  assign ifetch_if.fetch_err       = instr_mem_vif.error;
   assign ifetch_if.fetch_err_plus2 = 1'b0;
 
   assign ifetch_pmp_if.reset         = ~rst_n;
-  assign ifetch_pmp_if.fetch_valid   = instr_req;
-  assign ifetch_pmp_if.fetch_addr    = instr_addr;
-  assign ifetch_pmp_if.fetch_pmp_err = instr_err;
+  assign ifetch_pmp_if.fetch_valid   = instr_mem_vif.request;
+  assign ifetch_pmp_if.fetch_addr    = instr_mem_vif.addr;
+  assign ifetch_pmp_if.fetch_pmp_err = instr_mem_vif.error;
 
   assign data_mem_vif.misaligned_first = 1'b0;
   assign data_mem_vif.misaligned_second = 1'b0;
@@ -198,6 +198,28 @@ def write_patched_tb_top(original: Path, out_file: Path) -> None:
 
 """
     text = text[:start] + replacement + text[end:]
+    text = text.replace(
+        """  // Manually set unused_assert_connected = 1 to disable the AssertConnected_A assertion for
+  // prim_count in case lockstep (set by SecureIbex) is enabled and the lockstep offset is
+  // larger than 1. If not disabled, DV fails.
+  if (SecureIbex && LockstepOffset > 1) begin : gen_disable_count_check
+    assign dut.u_ibex_top.gen_lockstep.u_ibex_lockstep.gen_reset_counter.u_rst_shadow_cnt.
+          unused_assert_connected = 1;
+  end
+
+""",
+        """  // Chisel overlay does not expose the original lockstep reset-counter assertion knob.
+
+""")
+    text = text.replace(
+        """  assign controller_state      = dut.u_ibex_top.u_ibex_core.id_stage_i.controller_i.ctrl_fsm_cs;
+  assign controller_handle_irq = dut.u_ibex_top.u_ibex_core.id_stage_i.controller_i.handle_irq;
+  assign ibex_irqs             = dut.u_ibex_top.u_ibex_core.irqs;
+""",
+        """  assign controller_state      = ibex_pkg::RESET;
+  assign controller_handle_irq = 1'b0;
+  assign ibex_irqs             = '0;
+""")
     if out_file.parent.is_symlink():
         out_file.parent.unlink()
     out_file.parent.mkdir(parents=True, exist_ok=True)
