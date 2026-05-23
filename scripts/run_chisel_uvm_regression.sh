@@ -77,6 +77,7 @@ scripts/prepare_chisel_uvm_overlay.py \
 
 export IBEX_UVM_CORE_IBEX_DIR="${repo_root}/${overlay_dir}"
 export IBEX_UVM_PRJ_DIR="${repo_root}/externals/ibex"
+export IBEX_ROOT="${repo_root}/externals/ibex"
 export PRJ_DIR="${repo_root}/externals/ibex"
 export LOWRISC_IP_DIR="${repo_root}/externals/ibex/vendor/lowrisc_ip"
 
