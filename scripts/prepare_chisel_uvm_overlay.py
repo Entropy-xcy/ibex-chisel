@@ -66,7 +66,18 @@ def rewrite_filelist(original: Path, chisel_dir: Path, out_file: Path) -> None:
         else:
             dv_lines.append(line)
 
-    out_lines = lines[:rtl_start] + replacement + dv_lines
+    prefix_lines = []
+    for line in lines[:rtl_start]:
+        if line.strip() == SV_ONLY_PRIM_COUNT:
+            prefix_lines.extend([
+                "// Chisel lockstep does not instantiate lowRISC prim_count; compiling it as",
+                "// an otherwise uninstantiated VCS top trips its standalone AssertConnected_A.",
+                f"// {SV_ONLY_PRIM_COUNT}",
+            ])
+        else:
+            prefix_lines.append(line)
+
+    out_lines = prefix_lines + replacement + dv_lines
     out_file.write_text("\n".join(out_lines) + "\n", encoding="ascii")
 
 
