@@ -12,6 +12,7 @@ RTL_MARKER = "// ibex CORE RTL files"
 DV_MARKER = "// Core DV files"
 SV_INTERNAL_FCOV_BIND = "${PRJ_DIR}/dv/uvm/core_ibex/fcov/core_ibex_fcov_bind.sv"
 ORIGINAL_TB_TOP = "${PRJ_DIR}/dv/uvm/core_ibex/tb/core_ibex_tb_top.sv"
+SV_ONLY_PRIM_COUNT = "${LOWRISC_IP_DIR}/ip/prim/rtl/prim_count.sv"
 
 
 def read_generated_filelist(chisel_dir: Path) -> list[str]:
@@ -48,7 +49,13 @@ def rewrite_filelist(original: Path, chisel_dir: Path, out_file: Path) -> None:
 
     dv_lines = []
     for line in lines[dv_start:]:
-        if line.strip() == SV_INTERNAL_FCOV_BIND:
+        if line.strip() == SV_ONLY_PRIM_COUNT:
+            dv_lines.extend([
+                "// Chisel lockstep does not instantiate lowRISC prim_count; compiling it as",
+                "// an otherwise uninstantiated VCS top trips its standalone AssertConnected_A.",
+                f"// {SV_ONLY_PRIM_COUNT}",
+            ])
+        elif line.strip() == SV_INTERNAL_FCOV_BIND:
             dv_lines.extend([
                 "// Chisel RTL does not preserve the original ibex_core internal hierarchy",
                 "// required by this functional coverage bind.",
