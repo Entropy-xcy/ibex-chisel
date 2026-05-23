@@ -178,7 +178,8 @@ class IbexTop(
     RegNext(core_busy_d, IbexPkg.IbexMuBiOff)
   }
   val irq_pending = Wire(Bool())
-  val clock_en = core_busy_q(0) || debug_req_i || irq_pending || irq_nm_i
+  val clock_en = (if (secureIbex) core_busy_q =/= IbexPkg.IbexMuBiOff else core_busy_q(0)) ||
+    debug_req_i || irq_pending || irq_nm_i
   val clk = clk_i
 
   core_sleep_o := !clock_en
