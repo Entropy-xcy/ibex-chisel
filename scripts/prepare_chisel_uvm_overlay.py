@@ -10,6 +10,7 @@ from pathlib import Path
 
 RTL_MARKER = "// ibex CORE RTL files"
 DV_MARKER = "// Core DV files"
+SV_INTERNAL_FCOV_BIND = "${PRJ_DIR}/dv/uvm/core_ibex/fcov/core_ibex_fcov_bind.sv"
 
 
 def read_generated_filelist(chisel_dir: Path) -> list[str]:
@@ -44,7 +45,18 @@ def rewrite_filelist(original: Path, chisel_dir: Path, out_file: Path) -> None:
     replacement.append(str((chisel_dir / "ibex_top_tracing_chisel_wrapper.sv").resolve()))
     replacement.append("")
 
-    out_lines = lines[:rtl_start] + replacement + lines[dv_start:]
+    dv_lines = []
+    for line in lines[dv_start:]:
+        if line.strip() == SV_INTERNAL_FCOV_BIND:
+            dv_lines.extend([
+                "// Chisel RTL does not preserve the original ibex_core internal hierarchy",
+                "// required by this functional coverage bind.",
+                f"// {SV_INTERNAL_FCOV_BIND}",
+            ])
+        else:
+            dv_lines.append(line)
+
+    out_lines = lines[:rtl_start] + replacement + dv_lines
     out_file.write_text("\n".join(out_lines) + "\n", encoding="ascii")
 
 
