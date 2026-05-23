@@ -185,7 +185,9 @@ class IbexLockstep(
   }
   if (lockstepOffset == 1) {
     rst_shadow_set_d := IbexPkg.IbexMuBiOn
-    enable_cmp_d := IbexPkg.IbexMuBiOn
+    enable_cmp_d := withClockAndReset(clk_i, (!rst_ni).asAsyncReset) {
+      RegNext(IbexPkg.IbexMuBiOn, IbexPkg.IbexMuBiOff)
+    }
   } else {
     val rstShadowCnt = withClockAndReset(clk_i, (!rst_ni).asAsyncReset) {
       RegInit(0.U(log2Ceil(lockstepOffset + 1).W))
