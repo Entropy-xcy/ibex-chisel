@@ -726,45 +726,6 @@ object EmitIbex extends App {
       |  assign crash_dump_o.last_data_addr = crash_dump_o_last_data_addr;
       |  assign crash_dump_o.exception_pc = crash_dump_o_exception_pc;
       |  assign crash_dump_o.exception_addr = crash_dump_o_exception_addr;
-      |  assign rvfi_valid = u_chisel_top._ibex_top_rvfi_valid;
-      |  assign rvfi_order = u_chisel_top._ibex_top_rvfi_order;
-      |  assign rvfi_insn = u_chisel_top._ibex_top_rvfi_insn;
-      |  assign rvfi_trap = u_chisel_top._ibex_top_rvfi_trap;
-      |  assign rvfi_halt = 1'b0;
-      |  assign rvfi_intr = u_chisel_top._ibex_top_rvfi_intr;
-      |  assign rvfi_mode = u_chisel_top._ibex_top_rvfi_mode;
-      |  assign rvfi_ixl = 2'b01;
-      |  assign rvfi_rs1_addr = u_chisel_top._ibex_top_rvfi_rs1_addr;
-      |  assign rvfi_rs2_addr = u_chisel_top._ibex_top_rvfi_rs2_addr;
-      |  assign rvfi_rs3_addr = u_chisel_top._ibex_top_rvfi_rs3_addr;
-      |  assign rvfi_rs1_rdata = u_chisel_top._ibex_top_rvfi_rs1_rdata;
-      |  assign rvfi_rs2_rdata = u_chisel_top._ibex_top_rvfi_rs2_rdata;
-      |  assign rvfi_rs3_rdata = u_chisel_top._ibex_top_rvfi_rs3_rdata;
-      |  assign rvfi_rd_addr = u_chisel_top._ibex_top_rvfi_rd_addr;
-      |  assign rvfi_rd_wdata = u_chisel_top._ibex_top_rvfi_rd_wdata;
-      |  assign rvfi_pc_rdata = u_chisel_top._ibex_top_rvfi_pc_rdata;
-      |  assign rvfi_pc_wdata = u_chisel_top._ibex_top_rvfi_pc_wdata;
-      |  assign rvfi_mem_addr = u_chisel_top._ibex_top_rvfi_mem_addr;
-      |  assign rvfi_mem_rmask = u_chisel_top._ibex_top_rvfi_mem_rmask;
-      |  assign rvfi_mem_wmask = u_chisel_top._ibex_top_rvfi_mem_wmask;
-      |  assign rvfi_mem_rdata = u_chisel_top._ibex_top_rvfi_mem_rdata;
-      |  assign rvfi_mem_wdata = u_chisel_top._ibex_top_rvfi_mem_wdata;
-      |  assign rvfi_ext_pre_mip = 32'b0;
-      |  assign rvfi_ext_post_mip = 32'b0;
-      |  assign rvfi_ext_nmi = 1'b0;
-      |  assign rvfi_ext_nmi_int = 1'b0;
-      |  assign rvfi_ext_debug_req = debug_req_i;
-      |  assign rvfi_ext_debug_mode = 1'b0;
-      |  assign rvfi_ext_rf_wr_suppress = 1'b0;
-      |  assign rvfi_ext_mcycle = 64'b0;
-      |  assign rvfi_ext_mhpmcounters = '{default: 32'b0};
-      |  assign rvfi_ext_mhpmcountersh = '{default: 32'b0};
-      |  assign rvfi_ext_ic_scr_key_valid = scramble_key_valid_i;
-      |  assign rvfi_ext_irq_valid = irq_software_i | irq_timer_i | irq_external_i | (|irq_fast_i) | irq_nm_i;
-      |  assign rvfi_ext_expanded_insn_valid = u_chisel_top._ibex_top_rvfi_ext_expanded_insn_valid;
-      |  assign rvfi_ext_expanded_insn = u_chisel_top._ibex_top_rvfi_ext_expanded_insn;
-      |  assign rvfi_ext_expanded_insn_last = rvfi_ext_expanded_insn_valid;
-      |
       |  IbexTopTracing u_chisel_top (
       |    .clk_i(clk_i),
       |    .rst_ni(rst_ni),
@@ -827,6 +788,44 @@ object EmitIbex extends App {
       |    .alert_major_internal_o(alert_major_internal_o),
       |    .alert_major_bus_o(alert_major_bus_o),
       |    .core_sleep_o(core_sleep_o),
+      |    .rvfi_valid(rvfi_valid),
+      |    .rvfi_order(rvfi_order),
+      |    .rvfi_insn(rvfi_insn),
+      |    .rvfi_trap(rvfi_trap),
+      |    .rvfi_halt(rvfi_halt),
+      |    .rvfi_intr(rvfi_intr),
+      |    .rvfi_mode(rvfi_mode),
+      |    .rvfi_ixl(rvfi_ixl),
+      |    .rvfi_rs1_addr(rvfi_rs1_addr),
+      |    .rvfi_rs2_addr(rvfi_rs2_addr),
+      |    .rvfi_rs3_addr(rvfi_rs3_addr),
+      |    .rvfi_rs1_rdata(rvfi_rs1_rdata),
+      |    .rvfi_rs2_rdata(rvfi_rs2_rdata),
+      |    .rvfi_rs3_rdata(rvfi_rs3_rdata),
+      |    .rvfi_rd_addr(rvfi_rd_addr),
+      |    .rvfi_rd_wdata(rvfi_rd_wdata),
+      |    .rvfi_pc_rdata(rvfi_pc_rdata),
+      |    .rvfi_pc_wdata(rvfi_pc_wdata),
+      |    .rvfi_mem_addr(rvfi_mem_addr),
+      |    .rvfi_mem_rmask(rvfi_mem_rmask),
+      |    .rvfi_mem_wmask(rvfi_mem_wmask),
+      |    .rvfi_mem_rdata(rvfi_mem_rdata),
+      |    .rvfi_mem_wdata(rvfi_mem_wdata),
+      |    .rvfi_ext_pre_mip(rvfi_ext_pre_mip),
+      |    .rvfi_ext_post_mip(rvfi_ext_post_mip),
+      |    .rvfi_ext_nmi(rvfi_ext_nmi),
+      |    .rvfi_ext_nmi_int(rvfi_ext_nmi_int),
+      |    .rvfi_ext_debug_req(rvfi_ext_debug_req),
+      |    .rvfi_ext_debug_mode(rvfi_ext_debug_mode),
+      |    .rvfi_ext_rf_wr_suppress(rvfi_ext_rf_wr_suppress),
+      |    .rvfi_ext_mcycle(rvfi_ext_mcycle),
+      |    .rvfi_ext_mhpmcounters(rvfi_ext_mhpmcounters),
+      |    .rvfi_ext_mhpmcountersh(rvfi_ext_mhpmcountersh),
+      |    .rvfi_ext_ic_scr_key_valid(rvfi_ext_ic_scr_key_valid),
+      |    .rvfi_ext_irq_valid(rvfi_ext_irq_valid),
+      |    .rvfi_ext_expanded_insn_valid(rvfi_ext_expanded_insn_valid),
+      |    .rvfi_ext_expanded_insn(rvfi_ext_expanded_insn),
+      |    .rvfi_ext_expanded_insn_last(rvfi_ext_expanded_insn_last),
       |    .lockstep_cmp_en_o(lockstep_cmp_en_o),
       |    .data_req_shadow_o(data_req_shadow_o),
       |    .data_we_shadow_o(data_we_shadow_o),
