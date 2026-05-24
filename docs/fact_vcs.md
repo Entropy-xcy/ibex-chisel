@@ -119,3 +119,30 @@ Recent full directed baseline:
 - Chisel simple-system after stale-vmem fix: `942 total, 751 PASS, 191 FAIL`
 - remaining directed failures are all in `epmp_generated`; Chisel passes the
   `zicntr_counter_alias` case that failed in the original-SV proxy run.
+
+## Comparing Chisel failures against original Ibex
+
+When a riscv-dv/VCS failure appears in Chisel, rerun the exact same test and
+seed against the original Ibex UVM target before classifying it as a Chisel bug.
+The upstream environment can have seed-specific failures too.
+
+For example, after fixing Chisel illegal-opcode decode, this targeted run:
+
+```bash
+MAKEFLAGS=-j4 \
+IBEX_CHISEL_UVM_OUT=generated/chisel-uvm-vcs-opentitan-illegal-fix \
+IBEX_CHISEL_UVM_CONFIG=opentitan \
+IBEX_CHISEL_UVM_GOAL=all \
+IBEX_CHISEL_UVM_TEST=riscv_illegal_instr_test \
+IBEX_CHISEL_UVM_ITERATIONS=2 \
+IBEX_CHISEL_UVM_SEED=30935 \
+SIMULATOR=vcs \
+ISS=spike \
+scripts/run_chisel_uvm_regression.sh
+```
+
+showed `riscv_illegal_instr_test.30935` passing, while
+`riscv_illegal_instr_test.30936` still failed on `NoAlertsTriggered`. The same
+`.30936` seed fails in original Ibex SV with the same assertion after UVM enables
+spurious data-side responses, so that seed should not be counted as a
+Chisel-only convergence failure.

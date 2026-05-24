@@ -299,6 +299,14 @@ class IbexDecoderSpec extends AnyFreeSpec with Matchers with ChiselSim {
       simulate(new Harness()) { dut =>
         init(dut)
 
+        pokeInstr(dut, BigInt("8596c557", 16)) // unsupported vector opcode
+        dut.io.illegal_insn_o.expect(true.B)
+        dut.io.rf_we_o.expect(false.B)
+
+        pokeInstr(dut, BigInt("b39e31ab", 16)) // unsupported custom opcode
+        dut.io.illegal_insn_o.expect(true.B)
+        dut.io.rf_we_o.expect(false.B)
+
         pokeInstr(dut, iType(1, rs1 = 1, funct3 = 0, rd = 1, opcode = 0x13))
         dut.io.illegal_c_insn_i.poke(true.B)
         dut.io.illegal_insn_o.expect(true.B)

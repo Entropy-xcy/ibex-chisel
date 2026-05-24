@@ -183,8 +183,10 @@ class IbexDecoder(rv32e: Boolean = false, rv32m: Int = 2, rv32b: Int = 0, branch
   ecall_insn_o := false.B
   wfi_insn_o := false.B
 
+  val opcodeKnown = WireDefault(false.B)
   switch(instr(6, 0)) {
     is(Op.JAL) {
+      opcodeKnown := true.B
       jump_in_dec_o := true.B
       when(instr_first_cycle_i) {
         rf_we := branchTargetALU.B
@@ -194,6 +196,7 @@ class IbexDecoder(rv32e: Boolean = false, rv32m: Int = 2, rv32b: Int = 0, branch
       }
     }
     is(Op.JALR) {
+      opcodeKnown := true.B
       jump_in_dec_o := true.B
       when(instr_first_cycle_i) {
         rf_we := branchTargetALU.B
@@ -205,6 +208,7 @@ class IbexDecoder(rv32e: Boolean = false, rv32m: Int = 2, rv32b: Int = 0, branch
       rf_ren_a_o := true.B
     }
     is(Op.BRANCH) {
+      opcodeKnown := true.B
       branch_in_dec_o := true.B
       when(!Seq(0, 1, 4, 5, 6, 7).map(_.U === instr(14, 12)).reduce(_ || _)) {
         illegal_insn := true.B
@@ -213,6 +217,7 @@ class IbexDecoder(rv32e: Boolean = false, rv32m: Int = 2, rv32b: Int = 0, branch
       rf_ren_b_o := true.B
     }
     is(Op.STORE) {
+      opcodeKnown := true.B
       rf_ren_a_o := true.B
       rf_ren_b_o := true.B
       data_req_o := true.B
@@ -226,6 +231,7 @@ class IbexDecoder(rv32e: Boolean = false, rv32m: Int = 2, rv32b: Int = 0, branch
       }
     }
     is(Op.LOAD) {
+      opcodeKnown := true.B
       rf_ren_a_o := true.B
       data_req_o := true.B
       data_type_o := 0.U
@@ -241,9 +247,11 @@ class IbexDecoder(rv32e: Boolean = false, rv32m: Int = 2, rv32b: Int = 0, branch
       }
     }
     is(Op.LUI, Op.AUIPC) {
+      opcodeKnown := true.B
       rf_we := true.B
     }
     is(Op.OP_IMM) {
+      opcodeKnown := true.B
       rf_ren_a_o := true.B
       rf_we := true.B
       switch(instr(14, 12)) {
@@ -298,6 +306,7 @@ class IbexDecoder(rv32e: Boolean = false, rv32m: Int = 2, rv32b: Int = 0, branch
       }
     }
     is(Op.OP) {
+      opcodeKnown := true.B
       rf_ren_a_o := true.B
       rf_ren_b_o := true.B
       rf_we := true.B
@@ -332,6 +341,7 @@ class IbexDecoder(rv32e: Boolean = false, rv32m: Int = 2, rv32b: Int = 0, branch
       }
     }
     is(Op.MISC_MEM) {
+      opcodeKnown := true.B
       switch(instr(14, 12)) {
         is(0.U) { rf_we := false.B }
         is(1.U) {
@@ -345,6 +355,7 @@ class IbexDecoder(rv32e: Boolean = false, rv32m: Int = 2, rv32b: Int = 0, branch
       }
     }
     is(Op.SYSTEM) {
+      opcodeKnown := true.B
       when(instr(14, 12) === 0.U) {
         switch(instr(31, 20)) {
           is("h000".U) { ecall_insn_o := true.B }
@@ -373,6 +384,7 @@ class IbexDecoder(rv32e: Boolean = false, rv32m: Int = 2, rv32b: Int = 0, branch
     }
   }
 
+  when(!opcodeKnown) { illegal_insn := true.B }
   when(illegal_c_insn_i) { illegal_insn := true.B }
   when(illegal_insn) {
     rf_we := false.B
