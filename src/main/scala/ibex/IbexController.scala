@@ -246,6 +246,7 @@ class IbexController(writebackStage: Boolean = false, branchPredictor: Boolean =
       mem_resp_intg_err_addr_d := lsu_addr_last_i
     }
     irq_nm_int := mem_resp_intg_err_irq_pending_q
+    irq_nm_int_cause := 0.U
     irq_nm_int_mtval := mem_resp_intg_err_addr_q
   }
   irq_nm_int_o := irq_nm_int

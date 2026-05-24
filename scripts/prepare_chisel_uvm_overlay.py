@@ -165,7 +165,7 @@ def write_patched_tb_top(original: Path, out_file: Path) -> None:
   assign dut_if.ic_data_addr     = '0;
   assign dut_if.priv_mode        = ibex_pkg::priv_lvl_e'(dut.rvfi_mode);
   assign dut_if.ctrl_fsm_cs      = '0;
-  assign dut_if.debug_mode       = 1'b0;
+  assign dut_if.debug_mode       = dut.probe_debug_mode;
   assign dut_if.rf_ren_a         = |dut.rvfi_rs1_addr;
   assign dut_if.rf_ren_b         = |dut.rvfi_rs2_addr;
   assign dut_if.rf_rd_a_wb_match = 1'b0;

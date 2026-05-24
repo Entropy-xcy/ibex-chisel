@@ -161,6 +161,7 @@ class IbexCore(
   val probe_lsu_data_offset = IO(Output(UInt(2.W)))
   val probe_lsu_type = IO(Output(UInt(2.W)))
   val probe_priv_mode_lsu = IO(Output(UInt(2.W)))
+  val probe_debug_mode = IO(Output(Bool()))
 
   val dummy_instr_id = Wire(Bool())
   val instr_valid_id = Wire(Bool())
@@ -642,6 +643,7 @@ class IbexCore(
   probe_lsu_data_offset := load_store_unit_i.probe_data_offset_o
   probe_lsu_type := load_store_unit_i.probe_lsu_type_o
   probe_priv_mode_lsu := priv_mode_lsu
+  probe_debug_mode := debug_mode
   lsu_resp_err := lsu_load_err || lsu_store_err
   if (secureIbex) {
     lsu_load_err := lsu_load_err_raw && (outstanding_load_wb || expecting_load_resp_id)

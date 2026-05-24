@@ -166,6 +166,7 @@ class IbexTop(
   val probe_lsu_data_offset = IO(Output(UInt(2.W)))
   val probe_lsu_type = IO(Output(UInt(2.W)))
   val probe_priv_mode_lsu = IO(Output(UInt(2.W)))
+  val probe_debug_mode = IO(Output(Bool()))
 
   val scan_rst_ni = IO(Input(Bool()))
 
@@ -339,6 +340,7 @@ class IbexTop(
   probe_lsu_data_offset := ibex_core_i.probe_lsu_data_offset
   probe_lsu_type := ibex_core_i.probe_lsu_type
   probe_priv_mode_lsu := ibex_core_i.probe_priv_mode_lsu
+  probe_debug_mode := ibex_core_i.probe_debug_mode
 
   def connectRegFile[T <: RawModule](rf: T): Unit = rf match {
     case ff: IbexRegisterFileFF =>

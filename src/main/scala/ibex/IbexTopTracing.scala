@@ -143,6 +143,7 @@ class IbexTopTracing(
   val probe_lsu_data_offset = IO(Output(UInt(2.W)))
   val probe_lsu_type = IO(Output(UInt(2.W)))
   val probe_priv_mode_lsu = IO(Output(UInt(2.W)))
+  val probe_debug_mode = IO(Output(Bool()))
 
   val lockstep_cmp_en_o = IO(Output(UInt(IbexPkg.IbexMuBiWidth.W)))
   val data_req_shadow_o = IO(Output(Bool()))
@@ -210,6 +211,7 @@ class IbexTopTracing(
   dontTouch(rvfi_ext_nmi_int)
   dontTouch(rvfi_ext_debug_req)
   dontTouch(rvfi_ext_debug_mode)
+  dontTouch(probe_debug_mode)
   dontTouch(rvfi_ext_rf_wr_suppress)
   dontTouch(rvfi_ext_mcycle)
   dontTouch(rvfi_ext_mhpmcounters)
@@ -364,6 +366,7 @@ class IbexTopTracing(
   probe_lsu_data_offset := ibex_top.probe_lsu_data_offset
   probe_lsu_type := ibex_top.probe_lsu_type
   probe_priv_mode_lsu := ibex_top.probe_priv_mode_lsu
+  probe_debug_mode := ibex_top.probe_debug_mode
   dontTouch(probe_lsu_handle_misaligned_d)
   dontTouch(probe_lsu_addr_incr_req)
   dontTouch(probe_lsu_err_d)

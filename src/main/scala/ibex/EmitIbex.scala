@@ -722,6 +722,7 @@ object EmitIbex extends App {
       |  logic [1:0] probe_lsu_data_offset;
       |  logic [1:0] probe_lsu_type;
       |  logic [1:0] probe_priv_mode_lsu;
+      |  logic probe_debug_mode;
       |
       |  ibex_chisel_uvm_top_probe #(
       |    .ICacheECC(ICacheECC),
@@ -862,6 +863,7 @@ object EmitIbex extends App {
       |    .probe_lsu_data_offset(probe_lsu_data_offset),
       |    .probe_lsu_type(probe_lsu_type),
       |    .probe_priv_mode_lsu(probe_priv_mode_lsu),
+      |    .probe_debug_mode(probe_debug_mode),
       |    .lockstep_cmp_en_o(lockstep_cmp_en_o),
       |    .data_req_shadow_o(data_req_shadow_o),
       |    .data_we_shadow_o(data_we_shadow_o),
