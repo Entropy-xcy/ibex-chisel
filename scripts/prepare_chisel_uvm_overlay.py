@@ -183,7 +183,7 @@ def write_patched_tb_top(original: Path, out_file: Path) -> None:
   assign instr_monitor_if.is_compressed_id = dut.rvfi_ext_expanded_insn_valid;
   assign instr_monitor_if.instr_compressed_id = dut.rvfi_ext_expanded_insn;
   assign instr_monitor_if.instr_id = dut.rvfi_insn;
-  assign instr_monitor_if.pc_id    = dut.rvfi_pc_rdata;
+  assign instr_monitor_if.pc_id    = dut.crash_dump_o.current_pc;
   assign instr_monitor_if.branch_taken_id = 1'b0;
   assign instr_monitor_if.branch_target_id = dut.rvfi_pc_wdata;
   assign instr_monitor_if.stall_id         = 1'b0;
