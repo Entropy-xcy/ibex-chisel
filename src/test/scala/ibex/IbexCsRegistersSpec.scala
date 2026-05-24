@@ -379,7 +379,10 @@ class IbexCsRegistersSpec extends AnyFreeSpec with Matchers with ChiselSim {
 
       private def isMmlMExecByte(byte: BigInt): Boolean = {
         val lock = (byte & 0x80) != 0
-        val rwx = byte & 0x7
+        val read = byte & 0x1
+        val write = (byte >> 1) & 0x1
+        val exec = (byte >> 2) & 0x1
+        val rwx = (read << 2) | (write << 1) | exec
         lock && (rwx == 0x1 || rwx == 0x2 || rwx == 0x3 || rwx == 0x5)
       }
 
@@ -625,12 +628,21 @@ class IbexCsRegistersSpec extends AnyFreeSpec with Matchers with ChiselSim {
         read(dut, IbexPkg.CsrNum.MSECCFG) mustBe 0x1
 
         write(dut, IbexPkg.CsrNum.PMPCFG0, 0x89)
-        read(dut, IbexPkg.CsrNum.PMPCFG0) mustBe 0
+        read(dut, IbexPkg.CsrNum.PMPCFG0) mustBe 0x89
+
+        write(dut, IbexPkg.CsrNum.PMPCFG0, 0x8c)
+        read(dut, IbexPkg.CsrNum.PMPCFG0) mustBe 0x89
 
         write(dut, IbexPkg.CsrNum.MSECCFG, 0x4)
+        read(dut, IbexPkg.CsrNum.MSECCFG) mustBe 0x1
+      }
+
+      simulate(new Harness(pmpEnable = true, pmpNumRegions = 1)) { dut =>
+        reset(dut)
+        write(dut, IbexPkg.CsrNum.MSECCFG, 0x5)
         read(dut, IbexPkg.CsrNum.MSECCFG) mustBe 0x5
-        write(dut, IbexPkg.CsrNum.PMPCFG0, 0x89)
-        read(dut, IbexPkg.CsrNum.PMPCFG0) mustBe 0x89
+        write(dut, IbexPkg.CsrNum.PMPCFG0, 0x8c)
+        read(dut, IbexPkg.CsrNum.PMPCFG0) mustBe 0x8c
       }
     }
 

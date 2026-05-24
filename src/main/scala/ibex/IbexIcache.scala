@@ -179,6 +179,9 @@ class IbexIcache(
   val cache_bypass_pending_q = withClockAndReset(clk_i, (!rst_ni).asAsyncReset) {
     RegInit(false.B)
   }
+  val cache_bypass_req_q = withClockAndReset(clk_i, (!rst_ni).asAsyncReset) {
+    RegInit(false.B)
+  }
   val bypass_discard_q = withClockAndReset(clk_i, (!rst_ni).asAsyncReset) {
     RegInit(false.B)
   }
@@ -415,9 +418,10 @@ class IbexIcache(
   val fill_replay_valid = !cache_fill_stale && (fill_first_replay_valid || fill_second_replay_valid)
   val fill_replay_data = Mux(fill_second_replay_valid, cache_fill_data_q(63, 32), cache_fill_data_q(31, 0))
   val bypass_rsp_matches_output = bypass_addr_q(IbexPkg.ADDR_W - 1, BUS_W) === output_data_word_addr
-  val bypass_rsp_discard = instr_rvalid_i && cache_bypass_pending_q &&
+  val bypass_waiting_for_grant = cache_bypass_req_q && !instr_gnt_i && !instr_rvalid_i
+  val bypass_rsp_discard = instr_rvalid_i && cache_bypass_pending_q && !bypass_waiting_for_grant &&
     (bypass_discard_q || branch_i || !bypass_rsp_matches_output)
-  val bypass_rsp_valid = instr_rvalid_i && cache_bypass_pending_q && !bypass_discard_q &&
+  val bypass_rsp_valid = instr_rvalid_i && cache_bypass_pending_q && !bypass_waiting_for_grant && !bypass_discard_q &&
     !branch_i && bypass_rsp_matches_output
   val bypass_rsp_to_replay = bypass_rsp_valid && output_valid && !ready_i
   val bypass_replay_data_valid = bypass_replay_valid_q && !branch_i
@@ -481,16 +485,23 @@ class IbexIcache(
     prefetch_addr_q := Cat(output_data_word_addr, 0.U(BUS_W.W))
   }
 
-  instr_req := lookup_actual_ic0 || cache_spec_req || cache_miss_req
-  instr_addr := Mux(cache_miss_req, cache_miss_addr(IbexPkg.ADDR_W - 1, BUS_W), lookup_addr_ic0(IbexPkg.ADDR_W - 1, BUS_W))
+  instr_req := lookup_actual_ic0 || (cache_bypass_req_q && !instr_rvalid_i) || cache_spec_req || cache_miss_req
+  instr_addr := Mux(
+    cache_miss_req,
+    cache_miss_addr(IbexPkg.ADDR_W - 1, BUS_W),
+    Mux(cache_bypass_req_q, bypass_addr_q(IbexPkg.ADDR_W - 1, BUS_W), lookup_addr_ic0(IbexPkg.ADDR_W - 1, BUS_W)))
   instr_req_o := instr_req
   instr_addr_o := Cat(instr_addr, 0.U(BUS_W.W))
 
   when(lookup_actual_ic0) {
     cache_bypass_pending_q := true.B
+    cache_bypass_req_q := !instr_gnt_i
     bypass_addr_q := lookup_addr_ic0
   }.elsewhen(bypass_rsp_valid || bypass_rsp_discard) {
     cache_bypass_pending_q := false.B
+  }
+  when(cache_bypass_req_q && (instr_gnt_i || instr_rvalid_i)) {
+    cache_bypass_req_q := false.B
   }
   when(bypass_rsp_discard) {
     bypass_discard_q := false.B

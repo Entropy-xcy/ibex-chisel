@@ -21,6 +21,8 @@ overlay_dir="${out_root}/${config}/core_ibex_overlay"
 uvm_out="${out_root}/${config}/uvm_out"
 log_dir="${out_root}/${config}/logs"
 mkdir -p "${log_dir}"
+mkdir -p "${repo_root}/generated"
+ln -sfn "${repo_root}/${chisel_dir}" "${repo_root}/generated/rtl"
 
 if [[ -d "${local_spike_pkgconfig}" ]]; then
   export PKG_CONFIG_PATH="${local_spike_pkgconfig}:${PKG_CONFIG_PATH:-}"

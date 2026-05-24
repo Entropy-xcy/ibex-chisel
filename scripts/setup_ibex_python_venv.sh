@@ -15,6 +15,7 @@ python3 -m venv "${venv}"
   typing-utils \
   portalocker \
   pydantic \
+  junit-xml \
   tabulate \
   pandas \
   pyvsc
@@ -22,6 +23,7 @@ python3 -m venv "${venv}"
 "${venv}/bin/python" - <<'PY'
 import mako
 import yaml
+import junit_xml
 from typing_utils import get_args
 print("ibex-python-venv-ok")
 PY

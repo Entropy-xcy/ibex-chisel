@@ -89,6 +89,8 @@ class IbexMultDivSlow extends RawModule {
     accum_window_q(31)
   )
   val one_shift = (1.U(33.W) << multdiv_count_q)(32, 0)
+  val next_numerator_bit_idx = Mux(multdiv_count_q === 0.U, 0.U, multdiv_count_q - 1.U)
+  val next_numerator_bit = (op_numerator_q >> next_numerator_bit_idx)(0)
   val next_remainder = Mux(is_greater_equal, res_adder_h(31, 0), accum_window_q(31, 0))
   val next_quotient = Mux(is_greater_equal, op_a_shift_q | one_shift, op_a_shift_q)
   val div_change_sign = (sign_a ^ sign_b) & !div_by_zero_q
@@ -178,7 +180,7 @@ class IbexMultDivSlow extends RawModule {
             md_state_d := Mux(multdiv_count_q === 1.U, MdState.LAST, MdState.COMP)
           }
           is(MdOp.DIV, MdOp.REM) {
-            accum_window_d := Cat(next_remainder, op_numerator_q(multdiv_count_q - 1.U))
+            accum_window_d := Cat(next_remainder, next_numerator_bit)
             op_a_shift_d := next_quotient
             md_state_d := Mux(multdiv_count_q === 1.U, MdState.LAST, MdState.COMP)
           }
