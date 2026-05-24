@@ -48,7 +48,6 @@ Note that it is easiest to push to a repository if you set up SSH with Github, p
 git clone git@github.com:entropyxu/ibex_chisel.git
 cd ibex_chisel
 ```
-(The variables wrapped in `%` will be filled in by the template cleanup) <!-- #REMOVE-ON-CLEANUP# -->
 
 #### Set project organization and name in build.sbt
 
