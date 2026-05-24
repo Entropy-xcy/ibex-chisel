@@ -14,6 +14,7 @@ class IbexCsRegisters(
     dummyInstructions: Boolean = false,
     shadowCSR: Boolean = false,
     iCache: Boolean = false,
+    iCacheOutputEnable: Boolean = true,
     mhpmCounterNum: Int = 10,
     mhpmCounterWidth: Int = 40,
     pmpEnable: Boolean = false,
@@ -219,7 +220,7 @@ class IbexCsRegisters(
     val cpuDataIndTiming = RegInit(false.B)
     val cpuDummyInstrEn = RegInit(false.B)
     val cpuDummyInstrMask = RegInit(0.U(3.W))
-    val cpuIcacheEnable = RegInit(false.B)
+    val cpuIcacheEnable = RegInit(iCache.B)
     val cpuIcScrKeyValid = RegInit(false.B)
     val cpuctrlstsPartShadow = RegInit("h1ff".U(9.W))
     val cpuIcScrKeyValidShadow = RegInit(1.U(1.W))
@@ -267,12 +268,7 @@ class IbexCsRegisters(
     val minstretRdata = Mux(instr_ret_spec_i && !mcountinhibit(2), (minstret + 1.U).pad(64), minstret.pad(64))
     val mhpmRdata = Wire(Vec(29, UInt(64.W)))
     for (i <- 0 until 29) {
-      val raw = mhpm(i).pad(64)
-      if (i == 7) {
-        mhpmRdata(i) := Mux(instr_ret_compressed_spec_i && !mcountinhibit(10), (mhpm(i) + 1.U).pad(64), raw)
-      } else {
-        mhpmRdata(i) := raw
-      }
+      mhpmRdata(i) := mhpm(i).pad(64)
     }
     mcycle_o := mcycle.pad(64)
     for (i <- 0 until 10) {
@@ -686,7 +682,7 @@ class IbexCsRegisters(
     dummy_instr_mask_o := cpuDummyInstrMask
     dummy_instr_seed_en_o := dummyInstructions.B && csrWe && csr_addr_i === csr(IbexPkg.CsrNum.SECURESEED)
     dummy_instr_seed_o := wdata
-    icache_enable_o := cpuIcacheEnable && !(debug_mode_i || debug_mode_entering_i)
+    icache_enable_o := iCacheOutputEnable.B && cpuIcacheEnable && !(debug_mode_i || debug_mode_entering_i)
     ic_scr_key_valid_o := cpuIcScrKeyValid
     val mstatusErr = shadowCSR.B && (mstatusRdata =/= ~mstatusShadow)
     val mtvecErr = shadowCSR.B && (mtvec =/= ~mtvecShadow)

@@ -160,6 +160,12 @@ class IbexTop(
   val rvfi_ext_expanded_insn_valid = IO(Output(Bool()))
   val rvfi_ext_expanded_insn = IO(Output(UInt(16.W)))
   val rvfi_ext_expanded_insn_last = IO(Output(Bool()))
+  val probe_lsu_handle_misaligned_d = IO(Output(Bool()))
+  val probe_lsu_addr_incr_req = IO(Output(Bool()))
+  val probe_lsu_err_d = IO(Output(Bool()))
+  val probe_lsu_data_offset = IO(Output(UInt(2.W)))
+  val probe_lsu_type = IO(Output(UInt(2.W)))
+  val probe_priv_mode_lsu = IO(Output(UInt(2.W)))
 
   val scan_rst_ni = IO(Input(Bool()))
 
@@ -327,6 +333,12 @@ class IbexTop(
   rvfi_ext_expanded_insn_valid := ibex_core_i.rvfi_ext_expanded_insn_valid
   rvfi_ext_expanded_insn := ibex_core_i.rvfi_ext_expanded_insn
   rvfi_ext_expanded_insn_last := ibex_core_i.rvfi_ext_expanded_insn_last
+  probe_lsu_handle_misaligned_d := ibex_core_i.probe_lsu_handle_misaligned_d
+  probe_lsu_addr_incr_req := ibex_core_i.probe_lsu_addr_incr_req
+  probe_lsu_err_d := ibex_core_i.probe_lsu_err_d
+  probe_lsu_data_offset := ibex_core_i.probe_lsu_data_offset
+  probe_lsu_type := ibex_core_i.probe_lsu_type
+  probe_priv_mode_lsu := ibex_core_i.probe_priv_mode_lsu
 
   def connectRegFile[T <: RawModule](rf: T): Unit = rf match {
     case ff: IbexRegisterFileFF =>

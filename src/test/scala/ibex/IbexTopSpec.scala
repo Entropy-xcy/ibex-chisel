@@ -66,7 +66,7 @@ class IbexTopSpec extends AnyFreeSpec with Matchers with ChiselSim {
     dut.irq_fast_i := 0.U
     dut.irq_nm_i := false.B
 
-    dut.scramble_key_valid_i := false.B
+    dut.scramble_key_valid_i := iCacheScramble.B
     dut.scramble_key_i := 0.U
     dut.scramble_nonce_i := 0.U
 
@@ -116,6 +116,11 @@ class IbexTopSpec extends AnyFreeSpec with Matchers with ChiselSim {
     dut.clock.step()
     for (_ <- 0 until IbexPkg.IC_NUM_LINES) {
       dut.clock.step()
+    }
+    var cycles = 0
+    while (!dut.io.instr_req_o.peek().litToBoolean && cycles < 32) {
+      dut.clock.step()
+      cycles += 1
     }
   }
 
@@ -182,7 +187,7 @@ class IbexTopSpec extends AnyFreeSpec with Matchers with ChiselSim {
 
     val lastInstrAddr = RegNext(dut.instr_addr_o, 0.U)
     val instrRdata = MuxLookup(lastInstrAddr, "h00000013".U)(Seq(
-      "h00000080".U -> "h7c00e073".U, // csrsi cpuctrlsts, 1
+      "h00000080".U -> "h7c007073".U, // csrci cpuctrlsts, 1
       "h00000084".U -> "h4fa0006f".U, // jal x0, 0x57e
       "h00000578".U -> "h10734501".U,
       "h0000057c".U -> "h70733205".U,
@@ -190,7 +195,7 @@ class IbexTopSpec extends AnyFreeSpec with Matchers with ChiselSim {
       "h00000584".U -> "hc5193f9d".U))
     dut.instr_rdata_i := instrRdata
     dut.instr_rdata_intg_i := MuxLookup(instrRdata, intg3932(BigInt("00000013", 16)).U)(Seq(
-      "h7c00e073".U -> intg3932(BigInt("7c00e073", 16)).U,
+      "h7c007073".U -> intg3932(BigInt("7c007073", 16)).U,
       "h4fa0006f".U -> intg3932(BigInt("4fa0006f", 16)).U,
       "h10734501".U -> intg3932(BigInt("10734501", 16)).U,
       "h70733205".U -> intg3932(BigInt("70733205", 16)).U,
@@ -208,7 +213,7 @@ class IbexTopSpec extends AnyFreeSpec with Matchers with ChiselSim {
     dut.irq_external_i := false.B
     dut.irq_fast_i := 0.U
     dut.irq_nm_i := false.B
-    dut.scramble_key_valid_i := false.B
+    dut.scramble_key_valid_i := iCacheScramble.B
     dut.scramble_key_i := 0.U
     dut.scramble_nonce_i := 0.U
     dut.debug_req_i := false.B

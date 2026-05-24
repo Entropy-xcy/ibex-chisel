@@ -155,6 +155,12 @@ class IbexCore(
   val rvfi_ext_expanded_insn_valid = IO(Output(Bool()))
   val rvfi_ext_expanded_insn = IO(Output(UInt(16.W)))
   val rvfi_ext_expanded_insn_last = IO(Output(Bool()))
+  val probe_lsu_handle_misaligned_d = IO(Output(Bool()))
+  val probe_lsu_addr_incr_req = IO(Output(Bool()))
+  val probe_lsu_err_d = IO(Output(Bool()))
+  val probe_lsu_data_offset = IO(Output(UInt(2.W)))
+  val probe_lsu_type = IO(Output(UInt(2.W)))
+  val probe_priv_mode_lsu = IO(Output(UInt(2.W)))
 
   val dummy_instr_id = Wire(Bool())
   val instr_valid_id = Wire(Bool())
@@ -630,6 +636,12 @@ class IbexCore(
   lsu_busy := load_store_unit_i.busy_o
   perf_load := load_store_unit_i.perf_load_o
   perf_store := load_store_unit_i.perf_store_o
+  probe_lsu_handle_misaligned_d := load_store_unit_i.probe_handle_misaligned_d_o
+  probe_lsu_addr_incr_req := load_store_unit_i.addr_incr_req_o
+  probe_lsu_err_d := load_store_unit_i.probe_lsu_err_d_o
+  probe_lsu_data_offset := load_store_unit_i.probe_data_offset_o
+  probe_lsu_type := load_store_unit_i.probe_lsu_type_o
+  probe_priv_mode_lsu := priv_mode_lsu
   lsu_resp_err := lsu_load_err || lsu_store_err
   if (secureIbex) {
     lsu_load_err := lsu_load_err_raw && (outstanding_load_wb || expecting_load_resp_id)
@@ -680,7 +692,8 @@ class IbexCore(
     dataIndTiming = secureIbex,
     dummyInstructions = dummyInstructions,
     shadowCSR = false,
-    iCache = false,
+    iCache = iCache,
+    iCacheOutputEnable = false,
     mhpmCounterNum = mhpmCounterNum,
     mhpmCounterWidth = mhpmCounterWidth,
     pmpEnable = pmpEnable,
@@ -839,11 +852,12 @@ class IbexCore(
     0.U -> "b1111".U(4.W),
     1.U -> "b0011".U(4.W),
     2.U -> "b0001".U(4.W)))
+  val rvfi_mem_mask_aligned = Mux(lsu_req, data_be_o, rvfi_mem_mask_int)
   val rvfi_rd_we_wb = rf_we_wb || rf_we_lsu
   val rvfi_rd_addr_wb = rf_waddr_wb
   val rvfi_rd_wdata_wb = Mux(rf_we_wb, rf_wdata_wb, rf_wdata_lsu)
-  val rvfi_mem_rmask_d = Mux(lsu_req && !data_we_o, rvfi_mem_mask_int, 0.U)
-  val rvfi_mem_wmask_d = Mux(lsu_req && data_we_o, rvfi_mem_mask_int, 0.U)
+  val rvfi_mem_rmask_d = Mux(lsu_req && !data_we_o, rvfi_mem_mask_aligned, 0.U)
+  val rvfi_mem_wmask_d = Mux(lsu_req && data_we_o, rvfi_mem_mask_aligned, 0.U)
   val rvfi_expanded_insn_valid_d = instr_gets_expanded_id =/= IbexPkg.InstrExp.NotExpanded.asUInt
 
   val rvfi_intr_q = withClockAndReset(clk_i, (!rst_ni).asAsyncReset) { RegInit(false.B) }
@@ -1035,8 +1049,8 @@ class IbexCore(
       rvfi_stage_pc_rdata(0) := pc_id
       rvfi_stage_pc_wdata(0) := Mux(pc_set, branch_target_ex, pc_if)
       rvfi_stage_mem_addr(0) := rvfi_mem_addr_d
-      rvfi_stage_mem_rmask(0) := Mux(data_we_o, 0.U, rvfi_mem_mask_int)
-      rvfi_stage_mem_wmask(0) := Mux(data_we_o, rvfi_mem_mask_int, 0.U)
+      rvfi_stage_mem_rmask(0) := Mux(data_we_o, 0.U, rvfi_mem_mask_aligned)
+      rvfi_stage_mem_wmask(0) := Mux(data_we_o, rvfi_mem_mask_aligned, 0.U)
       rvfi_stage_mem_rdata(0) := rvfi_mem_rdata_d
       rvfi_stage_mem_wdata(0) := rvfi_mem_wdata_hold_d
       rvfi_ext_stage_debug_mode(0) := debug_mode

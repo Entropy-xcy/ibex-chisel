@@ -744,7 +744,8 @@ class IbexCsRegistersSpec extends AnyFreeSpec with Matchers with ChiselSim {
     "implements CPU control status feature gates and debug icache masking" in {
       simulate(new Harness(dataIndTiming = true, dummyInstructions = true, iCache = true)) { dut =>
         reset(dut)
-        read(dut, IbexPkg.CsrNum.CPUCTRLSTS) mustBe 0
+        read(dut, IbexPkg.CsrNum.CPUCTRLSTS) mustBe 1
+        dut.io.icache_enable_o.expect(true.B)
 
         write(dut, IbexPkg.CsrNum.CPUCTRLSTS, 0x3f)
         dut.io.icache_enable_o.expect(true.B)

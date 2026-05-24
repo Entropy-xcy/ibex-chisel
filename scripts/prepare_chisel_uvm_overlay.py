@@ -209,10 +209,13 @@ def write_patched_tb_top(original: Path, out_file: Path) -> None:
   assign ifetch_pmp_if.fetch_addr    = instr_mem_vif.addr;
   assign ifetch_pmp_if.fetch_pmp_err = instr_mem_vif.error;
 
-  assign data_mem_vif.misaligned_first = 1'b0;
-  assign data_mem_vif.misaligned_second = 1'b0;
-  assign data_mem_vif.misaligned_first_saw_error = 1'b0;
-  assign data_mem_vif.m_mode_access = dut.rvfi_mode == ibex_pkg::PRIV_LVL_M;
+  assign data_mem_vif.misaligned_first =
+      dut.probe_lsu_handle_misaligned_d |
+      ((dut.probe_lsu_type == 2'b01) & (dut.probe_lsu_data_offset == 2'b01));
+  assign data_mem_vif.misaligned_second = dut.probe_lsu_addr_incr_req;
+  assign data_mem_vif.misaligned_first_saw_error =
+      dut.probe_lsu_addr_incr_req & dut.probe_lsu_err_d;
+  assign data_mem_vif.m_mode_access = dut.probe_priv_mode_lsu == ibex_pkg::PRIV_LVL_M;
 
 """
     text = text[:start] + replacement + text[end:]

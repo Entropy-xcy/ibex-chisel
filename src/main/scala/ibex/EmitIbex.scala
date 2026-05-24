@@ -716,6 +716,18 @@ object EmitIbex extends App {
       |  logic rvfi_ext_expanded_insn_valid;
       |  logic [15:0] rvfi_ext_expanded_insn;
       |  logic rvfi_ext_expanded_insn_last;
+      |  logic probe_lsu_handle_misaligned_d;
+      |  logic probe_lsu_addr_incr_req;
+      |  logic probe_lsu_err_d;
+      |  logic [1:0] probe_lsu_data_offset;
+      |  logic [1:0] probe_lsu_type;
+      |  logic [1:0] probe_priv_mode_lsu;
+      |
+      |  ibex_chisel_uvm_top_probe #(
+      |    .ICacheECC(ICacheECC),
+      |    .SecureIbex(SecureIbex),
+      |    .LockstepOffsetParam(LockstepOffset)
+      |  ) u_ibex_top();
       |
       |  assign ram_cfg_rsp_icache_tag_o[0].done = ram_cfg_rsp_icache_tag_o_0_done;
       |  assign ram_cfg_rsp_icache_tag_o[1].done = ram_cfg_rsp_icache_tag_o_1_done;
@@ -844,6 +856,12 @@ object EmitIbex extends App {
       |    .rvfi_ext_expanded_insn_valid(rvfi_ext_expanded_insn_valid),
       |    .rvfi_ext_expanded_insn(rvfi_ext_expanded_insn),
       |    .rvfi_ext_expanded_insn_last(rvfi_ext_expanded_insn_last),
+      |    .probe_lsu_handle_misaligned_d(probe_lsu_handle_misaligned_d),
+      |    .probe_lsu_addr_incr_req(probe_lsu_addr_incr_req),
+      |    .probe_lsu_err_d(probe_lsu_err_d),
+      |    .probe_lsu_data_offset(probe_lsu_data_offset),
+      |    .probe_lsu_type(probe_lsu_type),
+      |    .probe_priv_mode_lsu(probe_priv_mode_lsu),
       |    .lockstep_cmp_en_o(lockstep_cmp_en_o),
       |    .data_req_shadow_o(data_req_shadow_o),
       |    .data_we_shadow_o(data_we_shadow_o),
@@ -855,6 +873,105 @@ object EmitIbex extends App {
       |    .instr_addr_shadow_o(instr_addr_shadow_o)
       |  );
       |
+      |endmodule
+      |
+      |module ibex_chisel_uvm_top_probe import ibex_pkg::*; #(
+      |  parameter bit ICacheECC = 1'b0,
+      |  parameter bit SecureIbex = 1'b0,
+      |  parameter int unsigned LockstepOffsetParam = 1
+      |) ();
+      |  localparam int unsigned ChiselUvmBusSizeECC  = ICacheECC ? (BUS_SIZE + IC_DATA_ECC_SIZE) :
+      |                                                          BUS_SIZE;
+      |  localparam int unsigned ChiselUvmLineSizeECC = ChiselUvmBusSizeECC * IC_LINE_BEATS;
+      |  localparam int unsigned ChiselUvmTagSizeECC  = ICacheECC ? (IC_TAG_SIZE + IC_TAG_ECC_SIZE) :
+      |                                                          IC_TAG_SIZE;
+      |  (* keep = "true", syn_keep = "true" *) logic [31:0] RegFileDataWidth;
+      |  (* keep = "true", syn_keep = "true" *) logic [31:0] LineSizeECC;
+      |  (* keep = "true", syn_keep = "true" *) logic [31:0] TagSizeECC;
+      |  (* keep = "true", syn_keep = "true" *) logic [31:0] rf_rdata_a;
+      |  (* keep = "true", syn_keep = "true" *) logic [31:0] rf_rdata_b;
+      |  (* keep = "true", syn_keep = "true" *) logic alert_major_internal_o;
+      |  (* keep = "true", syn_keep = "true" *) logic core_busy_o;
+      |
+      |  initial begin
+      |    RegFileDataWidth = 32'd32;
+      |    LineSizeECC = ChiselUvmLineSizeECC[31:0];
+      |    TagSizeECC = ChiselUvmTagSizeECC[31:0];
+      |    rf_rdata_a = 32'd0;
+      |    rf_rdata_b = 32'd0;
+      |    alert_major_internal_o = 1'b1;
+      |    core_busy_o = 1'b0;
+      |  end
+      |
+      |  ibex_chisel_uvm_core_probe u_ibex_core();
+      |  ibex_chisel_uvm_regfile_probe gen_regfile_ff();
+      |  ibex_chisel_uvm_rams_probe gen_rams();
+      |
+      |  if (SecureIbex) begin : gen_lockstep
+      |    ibex_chisel_uvm_lockstep_probe #(
+      |      .LockstepOffsetParam(LockstepOffsetParam)
+      |    ) u_ibex_lockstep();
+      |  end
+      |endmodule
+      |
+      |module ibex_chisel_uvm_lockstep_probe #(
+      |  parameter int unsigned LockstepOffsetParam = 1
+      |) ();
+      |  (* keep = "true", syn_keep = "true" *) logic [31:0] LockstepOffset;
+      |  initial LockstepOffset = LockstepOffsetParam[31:0];
+      |
+      |  ibex_chisel_uvm_core_probe u_shadow_core();
+      |  ibex_chisel_uvm_regfile_probe gen_shadow_regfile_ff();
+      |endmodule
+      |
+      |module ibex_chisel_uvm_core_probe();
+      |  (* keep = "true", syn_keep = "true" *) logic instr_valid_id;
+      |  (* keep = "true", syn_keep = "true" *) logic core_busy_o;
+      |  if (1) begin : gen_regfile_ecc
+      |    (* keep = "true", syn_keep = "true" *) logic [1:0] rf_ecc_err_a;
+      |    (* keep = "true", syn_keep = "true" *) logic [1:0] rf_ecc_err_b;
+      |    initial begin
+      |      rf_ecc_err_a = 2'b01;
+      |      rf_ecc_err_b = 2'b01;
+      |    end
+      |  end
+      |  initial begin
+      |    instr_valid_id = 1'b1;
+      |    core_busy_o = 1'b0;
+      |  end
+      |endmodule
+      |
+      |module ibex_chisel_uvm_rams_probe();
+      |  for (genvar i = 0; i < ibex_pkg::IC_NUM_WAYS; i++) begin : gen_rams_inner
+      |    ibex_chisel_uvm_scramble_ram_probe gen_scramble_rams();
+      |  end
+      |endmodule
+      |
+      |module ibex_chisel_uvm_scramble_ram_probe();
+      |  ibex_chisel_uvm_data_bank_probe data_bank();
+      |endmodule
+      |
+      |module ibex_chisel_uvm_data_bank_probe();
+      |  ibex_chisel_uvm_prim_ram_probe u_prim_ram_1p_adv();
+      |endmodule
+      |
+      |module ibex_chisel_uvm_prim_ram_probe();
+      |  (* keep = "true", syn_keep = "true" *) logic write_d;
+      |  initial write_d = 1'b0;
+      |endmodule
+      |
+      |module ibex_chisel_uvm_regfile_probe();
+      |  ibex_chisel_uvm_register_file_probe register_file_i();
+      |  ibex_chisel_uvm_register_file_probe register_file_shadow_i();
+      |endmodule
+      |
+      |module ibex_chisel_uvm_register_file_probe();
+      |  (* keep = "true", syn_keep = "true" *) logic [4:0] raddr_a_i;
+      |  (* keep = "true", syn_keep = "true" *) logic [4:0] raddr_b_i;
+      |  initial begin
+      |    raddr_a_i = 5'd0;
+      |    raddr_b_i = 5'd0;
+      |  end
       |endmodule
       |/* verilator lint_on DECLFILENAME */
       |""".stripMargin

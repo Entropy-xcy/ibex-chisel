@@ -58,6 +58,11 @@ class IbexLoadStoreUnit(memECC: Boolean = false, memDataWidth: Int = 0)
   val perf_load_o = IO(Output(Bool()))
   val perf_store_o = IO(Output(Bool()))
 
+  val probe_handle_misaligned_d_o = IO(Output(Bool()))
+  val probe_lsu_err_d_o = IO(Output(Bool()))
+  val probe_data_offset_o = IO(Output(UInt(2.W)))
+  val probe_lsu_type_o = IO(Output(UInt(2.W)))
+
   private object LsState {
     private val states = Enum(5)
     val IDLE = states(0)
@@ -277,6 +282,10 @@ class IbexLoadStoreUnit(memECC: Boolean = false, memDataWidth: Int = 0)
   load_resp_intg_err_o := data_intg_err && data_rvalid_i && !data_we_q
   store_resp_intg_err_o := data_intg_err && data_rvalid_i && data_we_q
   busy_o := ls_fsm_cs =/= LsState.IDLE
+  probe_handle_misaligned_d_o := handle_misaligned_d
+  probe_lsu_err_d_o := lsu_err_d
+  probe_data_offset_o := data_offset
+  probe_lsu_type_o := lsu_type_i
 
   withClockAndReset(clk_i, (!rst_ni).asAsyncReset) {
     assert(ls_fsm_cs === LsState.IDLE ||

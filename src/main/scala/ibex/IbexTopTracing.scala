@@ -137,6 +137,12 @@ class IbexTopTracing(
   val rvfi_ext_expanded_insn_valid = IO(Output(Bool()))
   val rvfi_ext_expanded_insn = IO(Output(UInt(16.W)))
   val rvfi_ext_expanded_insn_last = IO(Output(Bool()))
+  val probe_lsu_handle_misaligned_d = IO(Output(Bool()))
+  val probe_lsu_addr_incr_req = IO(Output(Bool()))
+  val probe_lsu_err_d = IO(Output(Bool()))
+  val probe_lsu_data_offset = IO(Output(UInt(2.W)))
+  val probe_lsu_type = IO(Output(UInt(2.W)))
+  val probe_priv_mode_lsu = IO(Output(UInt(2.W)))
 
   val lockstep_cmp_en_o = IO(Output(UInt(IbexPkg.IbexMuBiWidth.W)))
   val data_req_shadow_o = IO(Output(Bool()))
@@ -352,6 +358,18 @@ class IbexTopTracing(
   rvfi_ext_expanded_insn_valid := ibex_top.rvfi_ext_expanded_insn_valid
   rvfi_ext_expanded_insn := ibex_top.rvfi_ext_expanded_insn
   rvfi_ext_expanded_insn_last := ibex_top.rvfi_ext_expanded_insn_last
+  probe_lsu_handle_misaligned_d := ibex_top.probe_lsu_handle_misaligned_d
+  probe_lsu_addr_incr_req := ibex_top.probe_lsu_addr_incr_req
+  probe_lsu_err_d := ibex_top.probe_lsu_err_d
+  probe_lsu_data_offset := ibex_top.probe_lsu_data_offset
+  probe_lsu_type := ibex_top.probe_lsu_type
+  probe_priv_mode_lsu := ibex_top.probe_priv_mode_lsu
+  dontTouch(probe_lsu_handle_misaligned_d)
+  dontTouch(probe_lsu_addr_incr_req)
+  dontTouch(probe_lsu_err_d)
+  dontTouch(probe_lsu_data_offset)
+  dontTouch(probe_lsu_type)
+  dontTouch(probe_priv_mode_lsu)
 
   lockstep_cmp_en_o := ibex_top.lockstep_cmp_en_o
   data_req_shadow_o := ibex_top.data_req_shadow_o
