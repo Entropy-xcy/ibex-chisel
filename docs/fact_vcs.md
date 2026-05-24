@@ -70,3 +70,52 @@ scripts/run_chisel_uvm_regression.sh
 ```
 
 The upstream `riscv_dv_extension/testlist.yaml` currently has 57 riscv-dv test categories and 1540 default iterations for `opentitan`; `ITERATIONS=1` is only a convergence scan, not the full default overnight regression.
+
+To run the full default riscv-dv regression, do not use
+`scripts/run_chisel_uvm_regression.sh` as-is: that wrapper always passes
+`ITERATIONS=1`. Generate the Chisel overlay, activate the repo Python venv, and
+run the upstream `core_ibex` Makefile without an `ITERATIONS=` override so the
+testlist defaults are preserved. The verified Slurm helper pattern is:
+
+```bash
+source generated/ibex-python-venv/bin/activate
+export VCS_HOME=/fact_data/softwares/synopsys/vcs/W-2024.09-SP2
+export VCS_TARGET_ARCH=linux64
+export SNPS_CONTAINER=1
+export LM_LICENSE_FILE=27041@eels3.ece.ust.hk
+export SNPSLMD_LICENSE_FILE=27041@eels3.ece.ust.hk
+export PATH="$VCS_HOME/bin:$PATH"
+export LD_LIBRARY_PATH="$VCS_HOME/linux64/lib:/lib64:/usr/lib64:${LD_LIBRARY_PATH:-}"
+
+# After EmitIbex and prepare_chisel_uvm_overlay.py:
+cd generated/<run>/opentitan/core_ibex_overlay
+MAKEFLAGS=-j8 make --keep-going \
+  OUT="$PWD/../uvm_out" \
+  IBEX_CONFIG=opentitan \
+  SIMULATOR=vcs \
+  ISS=spike \
+  TEST=all_riscvdv \
+  WAVES=0 \
+  COV=0 \
+  GOAL=all
+```
+
+The repo Python venv is not optional for this path: the upstream config render
+step imports `mako`, which is available in `generated/ibex-python-venv`.
+
+## Directed regression notes
+
+The directed simple-system flow uses precompiled binaries in
+`generated/uvm-compile-directed-all/run/tests` and writes per-test vmem files
+under `generated/uvm-directed-simple/vmem`. Older vmem files may only contain
+`// entry=...` metadata and no `// boot=...` line. If those stale files are
+reused, `scripts/run_chisel_uvm_directed_simple_system.sh` fails while parsing
+the boot address. The script now treats a missing `// boot=0x...` line as a
+reason to regenerate the vmem.
+
+Recent full directed baseline:
+
+- original-SV proxy: `942 total, 750 PASS, 192 FAIL`
+- Chisel simple-system after stale-vmem fix: `942 total, 751 PASS, 191 FAIL`
+- remaining directed failures are all in `epmp_generated`; Chisel passes the
+  `zicntr_counter_alias` case that failed in the original-SV proxy run.

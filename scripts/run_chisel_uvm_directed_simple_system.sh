@@ -72,8 +72,15 @@ run_one() {
     return 1
   fi
 
+  local regen_vmem=0
+
   if [[ "${test_name}" == test_pmp_* ]]; then
     if [[ ! -f "${vmem}" || "${bin}" -nt "${vmem}" ]]; then
+      regen_vmem=1
+    elif ! rg -q '^// boot=0x[0-9a-fA-F]+' "${vmem}"; then
+      regen_vmem=1
+    fi
+    if [[ "${regen_vmem}" == 1 ]]; then
       case "${pmp_load_mode}" in
         original-bin)
           "${repo_root}/scripts/elf_to_chisel_vmem.py" \
@@ -102,11 +109,18 @@ run_one() {
           ;;
       esac
     fi
-  elif [[ ! -f "${vmem}" || "${elf}" -nt "${vmem}" ]]; then
-    "${repo_root}/scripts/elf_to_chisel_vmem.py" \
-      --elf "${elf}" \
-      --out "${vmem}" \
-      --ram-size-bytes "${ram_size_bytes}"
+  else
+    if [[ ! -f "${vmem}" || "${elf}" -nt "${vmem}" ]]; then
+      regen_vmem=1
+    elif ! rg -q '^// boot=0x[0-9a-fA-F]+' "${vmem}"; then
+      regen_vmem=1
+    fi
+    if [[ "${regen_vmem}" == 1 ]]; then
+      "${repo_root}/scripts/elf_to_chisel_vmem.py" \
+        --elf "${elf}" \
+        --out "${vmem}" \
+        --ram-size-bytes "${ram_size_bytes}"
+    fi
   fi
   local boot boot_addr
   boot="$(sed -n 's,^// boot=0x,,p' "${vmem}" | head -1)"
